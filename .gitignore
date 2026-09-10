@@ -1,0 +1,8 @@
+node_modules/
+.next/
+dist/
+.env
+uploads/original/*
+uploads/generated/*
+!uploads/original/.gitkeep
+!uploads/generated/.gitkeep
