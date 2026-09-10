@@ -10,20 +10,44 @@ interface Props {
   onComplete: () => void;
 }
 
+const OUTPUT_WIDTH = 1200;
+const OUTPUT_HEIGHT = 1800;
+
 export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
   const webcamRef = useRef<Webcam>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const capture = useCallback(async () => {
-    if (!webcamRef.current) return;
-    const src = webcamRef.current.getScreenshot();
-    if (!src) return;
+    const video = webcamRef.current?.video;
+    if (!video || !video.videoWidth || !video.videoHeight) return;
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(src);
-      const blob = await res.blob();
+      // Center-crop the raw video frame to the 1200x1800 target aspect ratio
+      // (cameras rarely stream native portrait, so we crop rather than stretch).
+      const targetRatio = OUTPUT_WIDTH / OUTPUT_HEIGHT;
+      const srcRatio = video.videoWidth / video.videoHeight;
+      let sx = 0, sy = 0, sw = video.videoWidth, sh = video.videoHeight;
+      if (srcRatio > targetRatio) {
+        sw = video.videoHeight * targetRatio;
+        sx = (video.videoWidth - sw) / 2;
+      } else {
+        sh = video.videoWidth / targetRatio;
+        sy = (video.videoHeight - sh) / 2;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = OUTPUT_WIDTH;
+      canvas.height = OUTPUT_HEIGHT;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+
+      const blob: Blob | null = await new Promise((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', 0.92),
+      );
+      if (!blob) return;
       await uploadImage(sessionId, blob);
       onComplete();
     } catch (err: any) { setError(err.message); }
@@ -44,9 +68,8 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
       <p className="kiosk-sub">Show us your best {jobLabel} look</p>
 
       <div className="cam-box">
-        <Webcam ref={webcamRef} audio={false} screenshotFormat="image/jpeg"
-          screenshotQuality={0.92}
-          videoConstraints={{ facingMode: 'user', width: 720, height: 720 }}
+        <Webcam ref={webcamRef} audio={false}
+          videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
           className="cam-feed" />
         <div className="cam-corner tl" />
         <div className="cam-corner tr" />
