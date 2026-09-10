@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "npx prisma generate && next build",
-    "start": "next start -p 3000",
+    "start": "next start",
     "db:push": "npx prisma db push",
     "db:studio": "npx prisma studio",
     "db:seed": "npx prisma db seed"
