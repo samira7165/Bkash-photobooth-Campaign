@@ -3,6 +3,8 @@ import prisma from '@/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string; type: string } },
