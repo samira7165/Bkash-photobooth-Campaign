@@ -3,11 +3,10 @@
 interface Props {
   jobLabel: string;
   phone: string;
-  campaignName: string;
   onRestart: () => void;
 }
 
-export default function StepDone({ jobLabel, phone, campaignName, onRestart }: Props) {
+export default function StepDone({ jobLabel, phone, onRestart }: Props) {
   return (
     <div className="kiosk-card fade-in kiosk-done">
       <div className="step-indicator">

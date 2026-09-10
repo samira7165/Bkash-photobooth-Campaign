@@ -10,7 +10,7 @@ export async function PUT(
   return withAdminAuth(req, async (req) => {
     try {
       const body = await req.json();
-      const { job, gender, campaignId, isActive } = body;
+      const { job, gender, isActive } = body;
 
       if (gender !== undefined && gender !== 'male' && gender !== 'female') {
         return NextResponse.json({ message: 'gender must be "male" or "female"' }, { status: 400 });
@@ -24,10 +24,8 @@ export async function PUT(
         data: {
           ...(job !== undefined && { job: job.trim() }),
           ...(gender !== undefined && { gender }),
-          ...(campaignId !== undefined && { campaignId: campaignId || null }),
           ...(isActive !== undefined && { isActive }),
         },
-        include: { campaign: { select: { id: true, name: true } } },
       });
 
       return NextResponse.json(updated);

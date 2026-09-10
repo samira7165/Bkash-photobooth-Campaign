@@ -4,12 +4,10 @@ import { useState } from 'react';
 import { createSession } from '@/services/api';
 
 interface Props {
-  campaignId: string;
-  campaignName: string;
   onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; gender: string }) => void;
 }
 
-export default function StepInfo({ campaignId, campaignName, onComplete }: Props) {
+export default function StepInfo({ onComplete }: Props) {
   const [info, setInfo] = useState({ name: '', phone: '', email: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -30,7 +28,6 @@ export default function StepInfo({ campaignId, campaignName, onComplete }: Props
         phone: info.phone.trim(),
         email: info.email.trim() || undefined,
         gender: info.gender,
-        campaignId,
       });
       setErrors({});
       onComplete(session.id, info);
@@ -51,7 +48,9 @@ export default function StepInfo({ campaignId, campaignName, onComplete }: Props
       </div>
       <p className="step-label">STEP 1 OF 4</p>
 
-      <h2 className="kiosk-title">Let&apos;s get <span className="title-accent">started!</span> <span className="title-sparkle">✨</span></h2>
+      <h2 className="kiosk-title">
+  Your <span className="title-accent">dream career</span> starts here
+</h2>
       <p className="kiosk-sub">Tell us a bit about yourself</p>
 
       <div className="kiosk-field">
@@ -90,7 +89,7 @@ export default function StepInfo({ campaignId, campaignName, onComplete }: Props
           {(['male', 'female'] as const).map((g) => (
             <button key={g} className={`gender-btn ${info.gender === g ? 'active' : ''}`}
               onClick={() => setInfo({ ...info, gender: g })}>
-              {g === 'male' ? '👨' : '👩'} {g.charAt(0).toUpperCase() + g.slice(1)}
+               {g.charAt(0).toUpperCase() + g.slice(1)}
             </button>
           ))}
         </div>
@@ -104,7 +103,7 @@ export default function StepInfo({ campaignId, campaignName, onComplete }: Props
         <span className="btn-arrow">→</span>
       </button>
 
-      <p className="trust-line">🛡️ Your information is safe with {campaignName}</p>
+      <p className="trust-line">Your information is kept safe and secure</p>
     </div>
   );
 }

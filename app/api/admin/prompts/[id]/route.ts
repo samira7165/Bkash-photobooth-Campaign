@@ -10,7 +10,6 @@ export async function GET(
     try {
       const template = await prisma.promptTemplate.findUnique({
         where: { id: params.id },
-        include: { campaign: { select: { name: true } } },
       });
 
       if (!template) {
@@ -32,7 +31,7 @@ export async function PUT(
   return withAdminAuth(req, async (req) => {
     try {
       const body = await req.json();
-      const { name, campaignId, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
+      const { name, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
 
       if (name !== undefined && !name.trim()) {
         return NextResponse.json({ message: 'name cannot be empty' }, { status: 400 });
@@ -59,7 +58,6 @@ export async function PUT(
         where: { id: params.id },
         data: {
           ...(name !== undefined && { name: name.trim() }),
-          ...(campaignId !== undefined && { campaignId: campaignId || null }),
           ...(isDefault !== undefined && { isDefault: !!isDefault }),
           ...(promptText !== undefined && { promptText: promptText.trim() }),
           ...(negativePrompt !== undefined && { negativePrompt: negativePrompt?.trim() || null }),
@@ -68,7 +66,6 @@ export async function PUT(
           }),
           ...(notes !== undefined && { notes: notes?.trim() || null }),
         },
-        include: { campaign: { select: { name: true } } },
       });
 
       return NextResponse.json(updated);

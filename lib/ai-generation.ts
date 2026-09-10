@@ -14,7 +14,6 @@ interface GenerateParams {
   originalImagePath: string;
   job: string;
   gender: string;
-  campaignId?: string;
   name?: string;
 }
 
@@ -105,7 +104,7 @@ async function generateDemoImage(
  * clothes and surroundings into their dream job while preserving their real face.
  */
 export async function generateImage(params: GenerateParams): Promise<string> {
-  const { originalImagePath, job, gender, campaignId, name } = params;
+  const { originalImagePath, job, gender, name } = params;
 
   const uploadDir = process.env.UPLOAD_DIR || './uploads';
   const generatedDir = path.join(uploadDir, 'generated');
@@ -131,7 +130,6 @@ export async function generateImage(params: GenerateParams): Promise<string> {
       name: name || '',
       gender,
       job,
-      campaignId,
     },
     base64Image,
   );

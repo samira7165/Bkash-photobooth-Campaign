@@ -11,7 +11,6 @@ export async function GET(
     try {
       const session = await prisma.session.findUnique({
         where: { id: params.id },
-        include: { campaign: { select: { id: true, name: true } } },
       });
 
       if (!session) {

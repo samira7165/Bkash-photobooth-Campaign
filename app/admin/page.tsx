@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import {
   AdminUser,
   AnalyticsData,
-  Campaign,
-  CampaignInput,
   DashboardStats,
   PromptPreviewResult,
   PromptTemplate,
@@ -19,17 +17,14 @@ import {
   SubmissionsResponse,
   adminLogout,
   bulkDeleteSubmissions,
-  createCampaign,
   createPromptTemplate,
   createProvider,
   createUser,
-  deleteCampaign,
   deletePromptTemplate,
   deleteProvider,
   deleteSubmission,
   deleteUser,
   getAnalytics,
-  getCampaigns,
   getCurrentAdmin,
   getDashboardStats,
   getProviders,
@@ -40,7 +35,6 @@ import {
   previewPrompt,
   resetProvider,
   resetUserPassword,
-  updateCampaign,
   updatePromptTemplate,
   updateProvider,
   updateUser,
@@ -53,7 +47,6 @@ import {
 type Section =
   | 'dashboard'
   | 'analytics'
-  | 'campaigns'
   | 'providers'
   | 'prompts'
   | 'submissions'
@@ -63,7 +56,6 @@ type Section =
 const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard' },
   { id: 'analytics', icon: '📈', label: 'Analytics' },
-  { id: 'campaigns', icon: '📋', label: 'Campaigns' },
   { id: 'providers', icon: '🤖', label: 'AI Providers' },
   { id: 'prompts', icon: '🎯', label: 'Prompts' },
   { id: 'submissions', icon: '📨', label: 'Submissions' },
@@ -74,7 +66,6 @@ const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
 const SECTION_TITLES: Record<Section, string> = {
   dashboard: 'Dashboard',
   analytics: 'Analytics',
-  campaigns: 'Campaigns',
   providers: 'AI Providers',
   prompts: 'Prompt Templates',
   submissions: 'Submissions',
@@ -144,16 +135,6 @@ const STATUS_HEX: Record<string, string> = {
 
 const COOLDOWN_MS = 10 * 60 * 1000;
 
-function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-}
-
 function downloadUrl(sessionId: string, type: 'original' | 'generated') {
   return `/api/images/download/${sessionId}/${type}`;
 }
@@ -206,19 +187,6 @@ function providerStatusColor(p: Provider): 'green' | 'yellow' | 'red' | 'grey' {
   return 'green';
 }
 
-const EMPTY_CAMPAIGN_FORM: CampaignInput = {
-  name: '',
-  slug: '',
-  description: '',
-  brandColor: '#6c5ce7',
-  bgColor: '',
-  textColor: '#ffffff',
-  cardBgColor: '',
-  fontFamily: '',
-  logoUrl: '',
-  isActive: true,
-};
-
 interface ProviderFormState {
   name: string;
   apiUrl: string;
@@ -240,14 +208,12 @@ const EMPTY_PROVIDER_FORM: ProviderFormState = {
 type ConfirmAction =
   | { kind: 'submission'; type: 'single'; id: string }
   | { kind: 'submission'; type: 'bulk' }
-  | { kind: 'campaign'; campaign: Campaign }
   | { kind: 'provider'; provider: Provider }
   | { kind: 'user'; user: AdminUser }
   | { kind: 'prompt'; template: PromptTemplate };
 
 interface PromptFormState {
   name: string;
-  campaignId: string;
   isDefault: boolean;
   promptText: string;
   negativePrompt: string;
@@ -257,7 +223,6 @@ interface PromptFormState {
 
 const EMPTY_PROMPT_FORM: PromptFormState = {
   name: '',
-  campaignId: '',
   isDefault: false,
   promptText: '',
   negativePrompt: '',
@@ -285,16 +250,6 @@ export default function AdminPage() {
     toastTimer.current = setTimeout(() => setToast(null), 4000);
   }, []);
   const showError = useCallback((message: string) => showToast(message, 'error'), [showToast]);
-
-  // ── Campaigns (shared across sections) ──
-  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const loadCampaigns = useCallback(async () => {
-    try {
-      setCampaigns(await getCampaigns());
-    } catch (e: any) {
-      showError(e.message || 'Failed to load campaigns');
-    }
-  }, [showError]);
 
   // ── Dashboard ──
   const [dashStats, setDashStats] = useState<DashboardStats | null>(null);
@@ -339,74 +294,6 @@ export default function AdminPage() {
     setAnalyticsFrom(fromStr);
     setAnalyticsTo(toStr);
     loadAnalytics(fromStr, toStr);
-  }
-
-  // ── Campaign form ──
-  const [showCampaignForm, setShowCampaignForm] = useState(false);
-  const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
-  const [campaignForm, setCampaignForm] = useState<CampaignInput>(EMPTY_CAMPAIGN_FORM);
-  const [slugTouched, setSlugTouched] = useState(false);
-  const [campaignFormSaving, setCampaignFormSaving] = useState(false);
-
-  function openCreateCampaignForm() {
-    setEditingCampaign(null);
-    setCampaignForm(EMPTY_CAMPAIGN_FORM);
-    setSlugTouched(false);
-    setShowCampaignForm(true);
-  }
-  function openEditCampaignForm(c: Campaign) {
-    setEditingCampaign(c);
-    setCampaignForm({
-      name: c.name,
-      slug: c.slug,
-      description: c.description || '',
-      brandColor: c.brandColor || '#6c5ce7',
-      bgColor: c.bgColor || '',
-      textColor: c.textColor || '#ffffff',
-      cardBgColor: c.cardBgColor || '',
-      fontFamily: c.fontFamily || '',
-      logoUrl: c.logoUrl || '',
-      isActive: c.isActive,
-    });
-    setSlugTouched(true);
-    setShowCampaignForm(true);
-  }
-  function closeCampaignForm() {
-    setShowCampaignForm(false);
-    setEditingCampaign(null);
-  }
-  function handleCampaignNameChange(name: string) {
-    setCampaignForm((f) => ({ ...f, name, slug: slugTouched ? f.slug : slugify(name) }));
-  }
-  async function submitCampaignForm(e: React.FormEvent) {
-    e.preventDefault();
-    if (!campaignForm.name.trim() || !campaignForm.slug.trim()) {
-      showError('Name and slug are required');
-      return;
-    }
-    setCampaignFormSaving(true);
-    try {
-      if (editingCampaign) {
-        await updateCampaign(editingCampaign.id, campaignForm);
-      } else {
-        await createCampaign(campaignForm);
-      }
-      closeCampaignForm();
-      await loadCampaigns();
-      showToast(editingCampaign ? 'Campaign updated' : 'Campaign created', 'success');
-    } catch (e: any) {
-      showError(e.message || 'Failed to save campaign');
-    } finally {
-      setCampaignFormSaving(false);
-    }
-  }
-  async function toggleCampaignActive(c: Campaign) {
-    try {
-      await updateCampaign(c.id, { isActive: !c.isActive });
-      await loadCampaigns();
-    } catch (e: any) {
-      showError(e.message || 'Failed to update campaign');
-    }
   }
 
   // ── Providers ──
@@ -496,7 +383,6 @@ export default function AdminPage() {
   }
 
   // ── Submissions ──
-  const [subCampaignFilter, setSubCampaignFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchPhone, setSearchPhone] = useState('');
   const [page, setPage] = useState(1);
@@ -510,7 +396,6 @@ export default function AdminPage() {
     setSubmissionsLoading(true);
     try {
       const data = await getSubmissions({
-        campaignId: subCampaignFilter,
         status: statusFilter,
         search: searchPhone,
         page,
@@ -522,15 +407,15 @@ export default function AdminPage() {
     } finally {
       setSubmissionsLoading(false);
     }
-  }, [subCampaignFilter, statusFilter, searchPhone, page, showError]);
+  }, [statusFilter, searchPhone, page, showError]);
 
   useEffect(() => {
     setPage(1);
-  }, [subCampaignFilter, statusFilter, searchPhone]);
+  }, [statusFilter, searchPhone]);
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [subCampaignFilter, statusFilter, searchPhone, page]);
+  }, [statusFilter, searchPhone, page]);
 
   function toggleSelectRow(id: string) {
     setSelectedIds((prev) => {
@@ -700,7 +585,6 @@ export default function AdminPage() {
     setEditingPromptTemplate(t);
     setPromptForm({
       name: t.name,
-      campaignId: t.campaignId || '',
       isDefault: t.isDefault,
       promptText: t.promptText,
       negativePrompt: t.negativePrompt || '',
@@ -749,8 +633,7 @@ export default function AdminPage() {
     try {
       const payload: PromptTemplateInput = {
         name: promptForm.name.trim(),
-        campaignId: promptForm.campaignId || null,
-        isDefault: promptForm.campaignId ? false : promptForm.isDefault,
+        isDefault: promptForm.isDefault,
         promptText: promptForm.promptText.trim(),
         negativePrompt: showNegativePrompt ? promptForm.negativePrompt.trim() : '',
         requestBodyTemplate: showRequestBody ? promptForm.requestBodyTemplate.trim() : '',
@@ -831,10 +714,6 @@ export default function AdminPage() {
           setSelectedIds(new Set());
           showToast(`${result.deleted} submissions deleted`, 'success');
         }
-      } else if (confirmAction.kind === 'campaign') {
-        await deleteCampaign(confirmAction.campaign.id);
-        await loadCampaigns();
-        showToast('Campaign deleted', 'success');
       } else if (confirmAction.kind === 'provider') {
         await deleteProvider(confirmAction.provider.id);
         await loadProviders();
@@ -881,12 +760,6 @@ export default function AdminPage() {
     }
     router.push('/admin/login');
   }
-
-  // campaigns are needed by several sections — load once auth is confirmed
-  useEffect(() => {
-    if (!admin) return;
-    loadCampaigns();
-  }, [admin, loadCampaigns]);
 
   useEffect(() => {
     if (!admin || section !== 'dashboard') return;
@@ -994,11 +867,6 @@ export default function AdminPage() {
             <h1 className="admin-section-title">{SECTION_TITLES[section]}</h1>
           </div>
           <div className="admin-content-actions">
-            {section === 'campaigns' && (
-              <button className="btn-primary admin-btn-inline" onClick={openCreateCampaignForm}>
-                + Create Campaign
-              </button>
-            )}
             {section === 'prompts' && (
               <button className="btn-primary admin-btn-inline" onClick={openCreatePromptForm}>
                 + Create Template
@@ -1006,18 +874,6 @@ export default function AdminPage() {
             )}
             {section === 'submissions' && (
               <>
-                <select
-                  className="admin-select"
-                  value={subCampaignFilter}
-                  onChange={(e) => setSubCampaignFilter(e.target.value)}
-                >
-                  <option value="all">All Campaigns</option>
-                  {campaigns.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
                 <select
                   className="admin-select"
                   value={statusFilter}
@@ -1063,7 +919,6 @@ export default function AdminPage() {
             preset={analyticsPreset}
             data={analytics}
             loading={analyticsLoading}
-            campaigns={campaigns}
             onFromChange={(v) => {
               setAnalyticsFrom(v);
               setAnalyticsPreset('custom');
@@ -1074,16 +929,6 @@ export default function AdminPage() {
             }}
             onApply={() => loadAnalytics(analyticsFrom, analyticsTo)}
             onPreset={applyPreset}
-          />
-        )}
-
-        {section === 'campaigns' && (
-          <CampaignsSection
-            campaigns={campaigns}
-            onCreate={openCreateCampaignForm}
-            onEdit={openEditCampaignForm}
-            onToggle={toggleCampaignActive}
-            onDelete={(c) => setConfirmAction({ kind: 'campaign', campaign: c })}
           />
         )}
 
@@ -1221,189 +1066,6 @@ export default function AdminPage() {
         </div>
       )}
 
-      {showCampaignForm && (
-        <div className="admin-modal-overlay" onClick={closeCampaignForm}>
-          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
-            <h2 className="card-title">{editingCampaign ? 'Edit Campaign' : 'Create Campaign'}</h2>
-            <form onSubmit={submitCampaignForm}>
-              <div className="field">
-                <label>
-                  Name <span className="req">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.name}
-                  onChange={(e) => handleCampaignNameChange(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label>
-                  Slug <span className="req">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.slug}
-                  onChange={(e) => {
-                    setSlugTouched(true);
-                    setCampaignForm((f) => ({ ...f, slug: slugify(e.target.value) }));
-                  }}
-                  required
-                />
-              </div>
-              <div className="field">
-                <label>
-                  Description <span className="opt">(optional)</span>
-                </label>
-                <textarea
-                  className="admin-textarea"
-                  value={campaignForm.description}
-                  onChange={(e) => setCampaignForm((f) => ({ ...f, description: e.target.value }))}
-                />
-              </div>
-              <div className="field">
-                <label>Brand Color</label>
-                <div className="admin-color-field-row">
-                  <input
-                    type="text"
-                    value={campaignForm.brandColor}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, brandColor: e.target.value }))}
-                    placeholder="#6c5ce7"
-                  />
-                  <span
-                    className="admin-color-swatch"
-                    style={{ background: campaignForm.brandColor || '#6c5ce7' }}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label>
-                  Background Color <span className="opt">(defaults to Brand Color)</span>
-                </label>
-                <div className="admin-color-field-row">
-                  <input
-                    type="color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(campaignForm.bgColor || '') ? campaignForm.bgColor! : (campaignForm.brandColor || '#6c5ce7')}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, bgColor: e.target.value }))}
-                    style={{ width: 40, height: 38, padding: 2, flexShrink: 0, cursor: 'pointer' }}
-                  />
-                  <input
-                    type="text"
-                    value={campaignForm.bgColor}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, bgColor: e.target.value }))}
-                    placeholder={campaignForm.brandColor || '#6c5ce7'}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label>Text Color</label>
-                <div className="admin-color-field-row">
-                  <input
-                    type="color"
-                    value={/^#[0-9a-fA-F]{6}$/.test(campaignForm.textColor || '') ? campaignForm.textColor! : '#ffffff'}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, textColor: e.target.value }))}
-                    style={{ width: 40, height: 38, padding: 2, flexShrink: 0, cursor: 'pointer' }}
-                  />
-                  <input
-                    type="text"
-                    value={campaignForm.textColor}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, textColor: e.target.value }))}
-                    placeholder="#ffffff"
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <label>
-                  Card Background <span className="opt">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.cardBgColor}
-                  onChange={(e) => setCampaignForm((f) => ({ ...f, cardBgColor: e.target.value }))}
-                  placeholder="e.g. rgba(0,0,0,0.35) for semi-transparent dark"
-                />
-              </div>
-              <div className="field">
-                <label>
-                  Font Family <span className="opt">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.fontFamily}
-                  onChange={(e) => setCampaignForm((f) => ({ ...f, fontFamily: e.target.value }))}
-                  placeholder="e.g. 'Poppins', sans-serif"
-                />
-              </div>
-              <div className="field">
-                <label>Theme Preview</label>
-                <div
-                  style={{
-                    width: 200,
-                    height: 60,
-                    borderRadius: 8,
-                    background: campaignForm.bgColor || campaignForm.brandColor || '#0a0c10',
-                    position: 'relative',
-                    border: '1px solid var(--border)',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 8,
-                      borderRadius: 6,
-                      background: campaignForm.cardBgColor || 'rgba(0,0,0,0.35)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: campaignForm.textColor || '#ffffff',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        fontFamily: campaignForm.fontFamily || undefined,
-                      }}
-                    >
-                      Sample Text
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="field">
-                <label>
-                  Logo URL <span className="opt">(optional)</span>
-                </label>
-                <input
-                  type="text"
-                  value={campaignForm.logoUrl}
-                  onChange={(e) => setCampaignForm((f) => ({ ...f, logoUrl: e.target.value }))}
-                />
-              </div>
-              <div className="field admin-checkbox-field">
-                <label className="admin-checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={campaignForm.isActive}
-                    onChange={(e) => setCampaignForm((f) => ({ ...f, isActive: e.target.checked }))}
-                  />
-                  Active
-                </label>
-              </div>
-              <div className="admin-modal-actions">
-                <button type="button" className="btn-secondary" onClick={closeCampaignForm}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary admin-btn-inline" disabled={campaignFormSaving}>
-                  {campaignFormSaving ? 'Saving…' : 'Save'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {showProviderForm && (
         <div className="admin-modal-overlay" onClick={closeProviderForm}>
           <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
@@ -1513,34 +1175,16 @@ export default function AdminPage() {
                   required
                 />
               </div>
-              <div className="field">
-                <label>Campaign</label>
-                <select
-                  className="admin-select"
-                  style={{ width: '100%' }}
-                  value={promptForm.campaignId}
-                  onChange={(e) => setPromptForm((f) => ({ ...f, campaignId: e.target.value }))}
-                >
-                  <option value="">Global Default</option>
-                  {campaigns.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="field admin-checkbox-field">
+                <label className="admin-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={promptForm.isDefault}
+                    onChange={(e) => setPromptForm((f) => ({ ...f, isDefault: e.target.checked }))}
+                  />
+                  Set as Default
+                </label>
               </div>
-              {!promptForm.campaignId && (
-                <div className="field admin-checkbox-field">
-                  <label className="admin-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={promptForm.isDefault}
-                      onChange={(e) => setPromptForm((f) => ({ ...f, isDefault: e.target.checked }))}
-                    />
-                    Set as Default
-                  </label>
-                </div>
-              )}
 
               <div className="field">
                 <label>
@@ -1854,9 +1498,6 @@ export default function AdminPage() {
         ? 'Delete this submission? The original and generated images will be permanently removed.'
         : `Delete ${selectedIds.size} submissions? This cannot be undone.`;
     }
-    if (action.kind === 'campaign') {
-      return `Delete "${action.campaign.name}"? All ${action.campaign._count?.sessions ?? 0} submissions under this campaign will also be deleted.`;
-    }
     if (action.kind === 'provider') {
       return `Delete provider "${action.provider.name}"?`;
     }
@@ -1888,10 +1529,6 @@ function DashboardSection({
         <div className="admin-stat-card">
           <div className="admin-stat-num">{stats?.todaySessions ?? '—'}</div>
           <div className="admin-stat-label">Today&apos;s Sessions</div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-num">{stats?.activeCampaigns ?? '—'}</div>
-          <div className="admin-stat-label">Active Campaigns</div>
         </div>
         <div className="admin-stat-card">
           <div className="admin-stat-num success">{stats?.totalGenerations ?? '—'}</div>
@@ -1932,7 +1569,6 @@ function DashboardSection({
                 <th>Phone</th>
                 <th>Job</th>
                 <th>Status</th>
-                <th>Campaign</th>
                 <th>Time</th>
               </tr>
             </thead>
@@ -1948,13 +1584,12 @@ function DashboardSection({
                         {STATUS_LABELS[s.status] || s.status}
                       </span>
                     </td>
-                    <td>{s.campaign?.name || '—'}</td>
                     <td>{timeAgo(s.createdAt)}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="admin-empty-cell">
+                  <td colSpan={5} className="admin-empty-cell">
                     {stats ? 'No submissions yet' : 'Loading…'}
                   </td>
                 </tr>
@@ -1973,7 +1608,6 @@ function AnalyticsSection({
   preset,
   data,
   loading,
-  campaigns,
   onFromChange,
   onToChange,
   onApply,
@@ -1984,21 +1618,14 @@ function AnalyticsSection({
   preset: string;
   data: AnalyticsData | null;
   loading: boolean;
-  campaigns: Campaign[];
   onFromChange: (v: string) => void;
   onToChange: (v: string) => void;
   onApply: () => void;
   onPreset: (p: 'today' | '7d' | '30d' | 'all') => void;
 }) {
   const maxDaily = data ? Math.max(1, ...data.dailyCounts.map((d) => d.count)) : 1;
-  const maxCampaign = data ? Math.max(1, ...data.byCampaign.map((d) => d.count)) : 1;
   const maxStatus = data ? Math.max(1, ...data.byStatus.map((d) => d.count)) : 1;
   const maxJob = data ? Math.max(1, ...data.byJob.map((d) => d.count)) : 1;
-
-  function campaignColor(name: string): string {
-    const c = campaigns.find((c) => c.name === name);
-    return c?.brandColor || '#6c5ce7';
-  }
 
   return (
     <>
@@ -2054,29 +1681,6 @@ function AnalyticsSection({
           </div>
 
           <div className="admin-chart-block">
-            <div className="admin-chart-title">Sessions by Campaign</div>
-            {data.byCampaign.length === 0 ? (
-              <div className="admin-empty">No sessions in this range</div>
-            ) : (
-              data.byCampaign.map((d) => (
-                <div className="admin-bar-row" key={d.campaignName}>
-                  <span className="admin-bar-label">{d.campaignName}</span>
-                  <div className="admin-bar-track">
-                    <div
-                      className="admin-bar-fill"
-                      style={{
-                        width: `${(d.count / maxCampaign) * 100}%`,
-                        background: campaignColor(d.campaignName),
-                      }}
-                    />
-                  </div>
-                  <span className="admin-bar-count">{d.count}</span>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="admin-chart-block">
             <div className="admin-chart-title">Sessions by Status</div>
             {data.byStatus.length === 0 ? (
               <div className="admin-empty">No sessions in this range</div>
@@ -2118,64 +1722,6 @@ function AnalyticsSection({
         </div>
       )}
     </>
-  );
-}
-
-function CampaignsSection({
-  campaigns,
-  onCreate,
-  onEdit,
-  onToggle,
-  onDelete,
-}: {
-  campaigns: Campaign[];
-  onCreate: () => void;
-  onEdit: (c: Campaign) => void;
-  onToggle: (c: Campaign) => void;
-  onDelete: (c: Campaign) => void;
-}) {
-  if (campaigns.length === 0) {
-    return (
-      <div className="admin-empty">
-        <p style={{ marginBottom: '1rem' }}>No campaigns yet</p>
-        <button className="btn-primary admin-btn-inline" onClick={onCreate}>
-          Create Your First Campaign
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="admin-campaign-grid">
-      {campaigns.map((c) => (
-        <div className={`admin-campaign-card ${c.isActive ? 'active' : 'inactive'}`} key={c.id}>
-          <div className="admin-campaign-top">
-            <span className="admin-color-dot" style={{ background: c.brandColor || '#6c5ce7' }} />
-            <span className="admin-campaign-name">{c.name}</span>
-          </div>
-          <div className="admin-campaign-slug">/{c.slug}</div>
-          {c.description && <div className="admin-campaign-desc">{c.description}</div>}
-          <div className="admin-campaign-badge">{c._count?.sessions ?? 0} sessions</div>
-          <div className="admin-campaign-bottom">
-            <button
-              className={`admin-toggle-switch ${c.isActive ? 'on' : ''}`}
-              onClick={() => onToggle(c)}
-              title={c.isActive ? 'Active — click to deactivate' : 'Inactive — click to activate'}
-            >
-              <span className="admin-toggle-knob" />
-            </button>
-            <div className="admin-campaign-actions">
-              <button className="btn-secondary admin-btn-sm" onClick={() => onEdit(c)}>
-                Edit
-              </button>
-              <button className="btn-secondary admin-btn-sm admin-btn-danger" onClick={() => onDelete(c)}>
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -2307,9 +1853,6 @@ function PromptsSection({
             <span className="admin-campaign-name">{t.name}</span>
             {t.isDefault && <span className="admin-default-badge">DEFAULT</span>}
           </div>
-          <div className="admin-campaign-slug">
-            {t.campaign?.name ? `Campaign: ${t.campaign.name}` : 'Global'}
-          </div>
           <div className="admin-campaign-desc">
             {t.promptText.length > 100 ? `${t.promptText.slice(0, 100)}…` : t.promptText}
           </div>
@@ -2390,7 +1933,6 @@ function SubmissionsSection({
               <th>Status</th>
               <th>Original</th>
               <th>Generated</th>
-              <th>Campaign</th>
               <th>Date</th>
               <th>Actions</th>
             </tr>
@@ -2465,7 +2007,6 @@ function SubmissionsSection({
                       )}
                     </div>
                   </td>
-                  <td>{s.campaign?.name || '—'}</td>
                   <td>{timeAgo(s.createdAt)}</td>
                   <td>
                     <div className="admin-row-actions">
@@ -2490,7 +2031,7 @@ function SubmissionsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="admin-empty-cell">
+                <td colSpan={11} className="admin-empty-cell">
                   {loading ? 'Loading…' : 'No submissions yet'}
                 </td>
               </tr>

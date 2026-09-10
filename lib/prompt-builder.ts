@@ -4,7 +4,6 @@ export interface PromptContext {
   name: string;
   gender: string; // "male" or "female"
   job: string;
-  campaignId?: string;
 }
 
 export interface BuiltPrompt {
@@ -209,21 +208,10 @@ export function resolveTemplate(
 }
 
 export async function buildPrompt(ctx: PromptContext, imageBase64: string): Promise<BuiltPrompt> {
-  // 1. Try campaign-specific template first (newest wins if several exist)
-  let template = null;
-  if (ctx.campaignId) {
-    template = await prisma.promptTemplate.findFirst({
-      where: { campaignId: ctx.campaignId },
-      orderBy: { updatedAt: 'desc' },
-    });
-  }
+  // 1. Use the configured default template
+  let template = await prisma.promptTemplate.findFirst({ where: { isDefault: true } });
 
-  // 2. Fall back to the global default
-  if (!template) {
-    template = await prisma.promptTemplate.findFirst({ where: { isDefault: true } });
-  }
-
-  // 3. Fall back to a hardcoded default if nothing is configured in the DB
+  // 2. Fall back to a hardcoded default if nothing is configured in the DB
   if (!template) {
     const details = getJobClothingAndSetting(ctx.job, ctx.gender);
     const defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;

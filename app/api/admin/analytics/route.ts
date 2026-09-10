@@ -14,7 +14,6 @@ export async function GET(req: NextRequest) {
 
       const sessions = await prisma.session.findMany({
         where: { createdAt: { gte: from, lte: to } },
-        include: { campaign: { select: { id: true, name: true } } },
       });
 
       const dayMap = new Map<string, number>();
@@ -25,18 +24,6 @@ export async function GET(req: NextRequest) {
       const dailyCounts = Array.from(dayMap.entries())
         .sort((a, b) => a[0].localeCompare(b[0]))
         .map(([date, count]) => ({ date, count }));
-
-      const campaignMap = new Map<string, { name: string; count: number }>();
-      for (const s of sessions) {
-        const key = s.campaign?.id || 'none';
-        const name = s.campaign?.name || 'No Campaign';
-        const entry = campaignMap.get(key) || { name, count: 0 };
-        entry.count += 1;
-        campaignMap.set(key, entry);
-      }
-      const byCampaign = Array.from(campaignMap.values())
-        .sort((a, b) => b.count - a.count)
-        .map((c) => ({ campaignName: c.name, count: c.count }));
 
       const statusMap = new Map<string, number>();
       for (const s of sessions) {
@@ -54,7 +41,7 @@ export async function GET(req: NextRequest) {
         .sort((a, b) => b[1] - a[1])
         .map(([job, count]) => ({ job, count }));
 
-      return NextResponse.json({ dailyCounts, byCampaign, byStatus, byJob });
+      return NextResponse.json({ dailyCounts, byStatus, byJob });
     } catch (error: any) {
       console.error('[API] Analytics error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });

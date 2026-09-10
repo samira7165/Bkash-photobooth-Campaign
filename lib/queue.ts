@@ -37,7 +37,6 @@ export async function processNextJob() {
         originalImagePath: session.originalImagePath!,
         job: selectedJob,
         gender: session.gender,
-        campaignId: session.campaignId || undefined,
         name: session.name,
       });
 

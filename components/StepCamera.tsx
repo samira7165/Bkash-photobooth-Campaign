@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import Webcam from 'react-webcam';
 import { uploadImage } from '@/services/api';
 
@@ -12,47 +12,119 @@ interface Props {
 
 const OUTPUT_WIDTH = 1200;
 const OUTPUT_HEIGHT = 1800;
+const TARGET_RATIO = OUTPUT_WIDTH / OUTPUT_HEIGHT;
+
+// Center-crop any image/video source to the 1200x1800 target aspect ratio
+// (cameras and uploaded photos rarely come in native portrait, so we crop
+// rather than stretch) and encode it as a JPEG blob.
+function cropToOutput(source: CanvasImageSource, srcWidth: number, srcHeight: number): Promise<Blob | null> {
+  const srcRatio = srcWidth / srcHeight;
+  let sx = 0, sy = 0, sw = srcWidth, sh = srcHeight;
+  if (srcRatio > TARGET_RATIO) {
+    sw = srcHeight * TARGET_RATIO;
+    sx = (srcWidth - sw) / 2;
+  } else {
+    sh = srcWidth / TARGET_RATIO;
+    sy = (srcHeight - sh) / 2;
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = OUTPUT_WIDTH;
+  canvas.height = OUTPUT_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return Promise.resolve(null);
+  ctx.drawImage(source, sx, sy, sw, sh, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  return new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+}
 
 export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
   const webcamRef = useRef<Webcam>(null);
-  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const setPreview = useCallback((blob: Blob) => {
+    setPreviewBlob(blob);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return URL.createObjectURL(blob);
+    });
+  }, []);
 
   const capture = useCallback(async () => {
     const video = webcamRef.current?.video;
     if (!video || !video.videoWidth || !video.videoHeight) return;
-    setLoading(true);
+    setBusy(true);
     setError('');
     try {
-      // Center-crop the raw video frame to the 1200x1800 target aspect ratio
-      // (cameras rarely stream native portrait, so we crop rather than stretch).
-      const targetRatio = OUTPUT_WIDTH / OUTPUT_HEIGHT;
-      const srcRatio = video.videoWidth / video.videoHeight;
-      let sx = 0, sy = 0, sw = video.videoWidth, sh = video.videoHeight;
-      if (srcRatio > targetRatio) {
-        sw = video.videoHeight * targetRatio;
-        sx = (video.videoWidth - sw) / 2;
-      } else {
-        sh = video.videoWidth / targetRatio;
-        sy = (video.videoHeight - sh) / 2;
-      }
-
-      const canvas = document.createElement('canvas');
-      canvas.width = OUTPUT_WIDTH;
-      canvas.height = OUTPUT_HEIGHT;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.drawImage(video, sx, sy, sw, sh, 0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
-
-      const blob: Blob | null = await new Promise((resolve) =>
-        canvas.toBlob(resolve, 'image/jpeg', 0.92),
-      );
+      const blob = await cropToOutput(video, video.videoWidth, video.videoHeight);
       if (!blob) return;
-      await uploadImage(sessionId, blob);
+      setPreview(blob);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }, [setPreview]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+
+    setBusy(true);
+    setError('');
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const blob = await cropToOutput(img, img.naturalWidth, img.naturalHeight);
+        if (blob) setPreview(blob);
+      } catch (err: any) {
+        setError(err.message || 'Failed to process the selected image');
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+        setBusy(false);
+      }
+    };
+    img.onerror = () => {
+      setError('Could not load the selected image');
+      URL.revokeObjectURL(objectUrl);
+      setBusy(false);
+    };
+    img.src = objectUrl;
+  }, [setPreview]);
+
+  const retake = useCallback(() => {
+    setError('');
+    setPreviewBlob(null);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
+  }, []);
+
+  const submit = useCallback(async () => {
+    if (!previewBlob) return;
+    setBusy(true);
+    setError('');
+    try {
+      await uploadImage(sessionId, previewBlob);
       onComplete();
-    } catch (err: any) { setError(err.message); }
-    finally { setLoading(false); }
-  }, [sessionId, onComplete]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }, [previewBlob, sessionId, onComplete]);
 
   return (
     <div className="kiosk-card fade-in wide">
@@ -68,9 +140,13 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
       <p className="kiosk-sub">Show us your best {jobLabel} look</p>
 
       <div className="cam-box">
-        <Webcam ref={webcamRef} audio={false}
-          videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
-          className="cam-feed" />
+        {previewUrl ? (
+          <img src={previewUrl} alt="Captured preview" className="cam-feed" />
+        ) : (
+          <Webcam ref={webcamRef} audio={false}
+            videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
+            className="cam-feed" />
+        )}
         <div className="cam-corner tl" />
         <div className="cam-corner tr" />
         <div className="cam-corner bl" />
@@ -79,10 +155,37 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
 
       {error && <p className="field-err" style={{ textAlign: 'center' }}>{error}</p>}
 
-      <button className="shutter-btn" onClick={capture} disabled={loading}>
-        {loading ? <span className="shutter-spin" /> : <span className="shutter-circle" />}
-      </button>
-      <p className="cam-hint">Position yourself inside the frame and tap to capture.</p>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
+
+      {!previewUrl ? (
+        <>
+          <button className="shutter-btn" onClick={capture} disabled={busy}>
+            {busy ? <span className="shutter-spin" /> : <span className="shutter-circle" />}
+          </button>
+          <p className="cam-hint">Position yourself inside the frame and tap to capture.</p>
+        </>
+      ) : (
+        <>
+          <div className="cam-action-row">
+            <button className="kiosk-btn-secondary" onClick={retake} disabled={busy}>
+              Retake
+            </button>
+            <button className="kiosk-btn-secondary" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+              Upload
+            </button>
+          </div>
+          <button className="kiosk-btn-primary" onClick={submit} disabled={busy}>
+            <span>{busy ? 'Submitting…' : 'Submit'}</span>
+            <span className="btn-arrow">→</span>
+          </button>
+        </>
+      )}
     </div>
   );
 }

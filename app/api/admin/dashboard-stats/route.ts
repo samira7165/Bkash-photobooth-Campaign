@@ -11,7 +11,6 @@ export async function GET(req: NextRequest) {
       const [
         totalSessions,
         todaySessions,
-        activeCampaigns,
         totalGenerations,
         queued,
         processing,
@@ -21,7 +20,6 @@ export async function GET(req: NextRequest) {
       ] = await Promise.all([
         prisma.session.count(),
         prisma.session.count({ where: { createdAt: { gte: today } } }),
-        prisma.campaign.count({ where: { isActive: true } }),
         prisma.session.count({ where: { status: { in: ['generated', 'sms_sent'] } } }),
         prisma.session.count({ where: { status: 'queued' } }),
         prisma.session.count({ where: { status: 'processing' } }),
@@ -30,14 +28,12 @@ export async function GET(req: NextRequest) {
         prisma.session.findMany({
           orderBy: { createdAt: 'desc' },
           take: 10,
-          include: { campaign: { select: { id: true, name: true } } },
         }),
       ]);
 
       return NextResponse.json({
         totalSessions,
         todaySessions,
-        activeCampaigns,
         totalGenerations,
         queued,
         processing,
@@ -50,7 +46,6 @@ export async function GET(req: NextRequest) {
           selectedJob: s.selectedJob,
           customJob: s.customJob,
           status: s.status,
-          campaign: s.campaign,
           createdAt: s.createdAt,
         })),
       });

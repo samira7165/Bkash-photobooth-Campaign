@@ -5,7 +5,7 @@ import { normalizePhone } from '@/lib/utils';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, email, gender, campaignId } = body;
+    const { name, phone, email, gender } = body;
 
     // Validate
     if (!name?.trim()) {
@@ -24,7 +24,6 @@ export async function POST(req: NextRequest) {
         phone: normalizePhone(phone.trim()),
         email: email?.trim() || null,
         gender,
-        campaignId: campaignId?.trim() || null,
         status: 'created',
       },
     });

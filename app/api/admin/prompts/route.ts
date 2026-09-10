@@ -5,13 +5,12 @@ import { withAdminAuth } from '@/lib/admin-guard';
 const DEFAULT_TEMPLATE = {
   name: 'Default Dream Job Portrait',
   isDefault: true,
-  campaignId: null,
   promptText:
     'A professional portrait photo of a young {{genderWord}} working as a {{job}}, wearing the appropriate {{job}} professional uniform and gear, in a realistic professional workplace environment, high quality, ultra detailed, natural studio lighting, sharp focus, 4k resolution, professional photography',
   negativePrompt:
     'blurry, low quality, distorted, deformed, ugly, bad anatomy, bad hands, extra fingers, missing fingers, watermark, text, signature, logo, cartoon, anime, illustration, painting, drawing',
   requestBodyTemplate: null,
-  notes: 'Default template. Customize or create campaign-specific templates for different events.',
+  notes: 'Default template. Customize as needed.',
 };
 
 export async function GET(req: NextRequest) {
@@ -23,7 +22,6 @@ export async function GET(req: NextRequest) {
       }
 
       const templates = await prisma.promptTemplate.findMany({
-        include: { campaign: { select: { name: true } } },
         orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
       });
 
@@ -39,7 +37,7 @@ export async function POST(req: NextRequest) {
   return withAdminAuth(req, async (req) => {
     try {
       const body = await req.json();
-      const { name, campaignId, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
+      const { name, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
 
       if (!name?.trim() || !promptText?.trim()) {
         return NextResponse.json({ message: 'name and promptText are required' }, { status: 400 });
@@ -63,14 +61,12 @@ export async function POST(req: NextRequest) {
       const template = await prisma.promptTemplate.create({
         data: {
           name: name.trim(),
-          campaignId: campaignId || null,
           isDefault: !!isDefault,
           promptText: promptText.trim(),
           negativePrompt: negativePrompt?.trim() || null,
           requestBodyTemplate: requestBodyTemplate?.trim() || null,
           notes: notes?.trim() || null,
         },
-        include: { campaign: { select: { name: true } } },
       });
 
       return NextResponse.json(template, { status: 201 });

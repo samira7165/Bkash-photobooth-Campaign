@@ -1887,84 +1887,59 @@ textarea.admin-textarea:focus {
 
 /* ═══════════════════════════════════════════════════════
    KIOSK PHOTOBOOTH STYLES
-   3 layers: background (.kiosk) → characters (.deco-layer) → card (.kiosk-content)
-   Background image filename confirmed via `ls public/characters/`:
-   public/characters/background.png (plain pink/cityscape gradient, no characters).
+   2 layers: fixed background (.kiosk, public/ui.png) → card (.kiosk-content)
    Entirely separate from .card/.btn-primary/.booth-* (default theme) and
    .admin-* (admin dashboard) — no class names are shared or reused.
    ═══════════════════════════════════════════════════════ */
 
-/* ── Layer 1: Background ── */
+/* ── Layer 1: Background ──
+   position: fixed + inset: 0 pins this to the viewport regardless of body's
+   padding/flex rules, and makes background-size: cover measure against the
+   viewport instead of the (potentially very tall) content box. overflow-y
+   lets the inner content scroll on short screens without the background
+   panning or the outer document double-scrolling. */
 .kiosk {
-  position: relative;
-  min-height: 100dvh;
-  width: 100%;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   background-color: #E2136E;
+  background-image: url('/ui.png');
   background-size: cover;
   background-position: center bottom;
   background-repeat: no-repeat;
   overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* Tablet widths get the portrait-framed artwork (tab.png) instead of the
+   landscape ui.png, which would otherwise crop most of the side characters
+   off at this aspect ratio. */
+@media (min-width: 481px) and (max-width: 1023px) {
+  .kiosk { background-image: url('/tab.png'); }
 }
 
-/* ── Layer 2: Decoration characters ── */
-.deco-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.deco {
-  position: absolute;
-  object-fit: contain;
-}
-
-/* Left side positions */
-.pos-tl-far   { top: -2%; left: -2%; width: 130px; }
-.pos-tl       { top: 2%; left: 5%; width: 170px; animation: floatA 4s ease-in-out infinite; }
-.pos-ml       { top: 28%; left: -1%; width: 190px; animation: floatB 5s ease-in-out infinite; }
-.pos-bl-up    { bottom: 26%; left: 1%; width: 160px; animation: floatA 4.5s ease-in-out infinite; }
-.pos-bl       { bottom: 3%; left: -1%; width: 170px; }
-.pos-bc-left  { bottom: 1%; left: 13%; width: 190px; }
-.pos-bc-left-low { bottom: 0; left: 22%; width: 110px; }
-
-/* Right side positions */
-.pos-tr       { top: 3%; right: 1%; width: 190px; animation: floatA 4.5s ease-in-out infinite; }
-.pos-mr       { top: 34%; right: -1%; width: 180px; animation: floatB 5.5s ease-in-out infinite; }
-.pos-br-up    { bottom: 16%; right: 8%; width: 190px; animation: floatA 5s ease-in-out infinite; }
-.pos-br       { bottom: 2%; right: -1%; width: 170px; }
-
-/* Signs */
-.sign { width: 105px; }
-.s1 { top: 7%; left: 2%; transform: rotate(-8deg); }
-.s2 { top: 30%; left: -1%; transform: rotate(-5deg); }
-.s3 { bottom: 34%; left: 1%; transform: rotate(-3deg); }
-.s4 { bottom: 7%; left: 17%; transform: rotate(2deg); }
-.s5 { top: 4%; right: -1%; transform: rotate(5deg); width: 115px; }
-.s6 { top: 37%; right: -1%; transform: rotate(3deg); }
-
-/* Float animations */
-@keyframes floatA {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
-}
-@keyframes floatB {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(8px); }
-}
-
-/* ── Layer 3: Content ── */
-.kiosk-logo {
+/* ── Layer 2: Content ──
+   .kiosk-inner groups the logo + card so they center together as one unit
+   in the fixed-height .kiosk viewport when there's room, and scroll as one
+   unit (logo included) when content is taller than the screen. */
+.kiosk-inner {
   position: relative;
   z-index: 2;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: auto 0;
+}
+
+.kiosk-logo {
   display: flex;
   justify-content: center;
   padding-top: 1.5rem;
   margin-bottom: 1rem;
+  flex-shrink: 0;
 }
 .kiosk-logo img {
   height: 56px;
@@ -1975,16 +1950,8 @@ textarea.admin-textarea:focus {
   padding: 8px 18px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
-.kiosk-logo-text {
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
-}
 
 .kiosk-content {
-  position: relative;
-  z-index: 2;
   width: 100%;
   max-width: 520px;
   padding: 0 1rem 2rem;
@@ -2158,6 +2125,10 @@ textarea.admin-textarea:focus {
 @keyframes kioskSpin { to { transform: rotate(360deg); } }
 .cam-hint { text-align: center; font-size: 0.82rem; color: rgba(255,255,255,0.5); margin-top: 0.75rem; }
 
+/* ── Camera: Retake / Upload / Submit ── */
+.cam-action-row { display: flex; gap: 0.75rem; margin-bottom: 0.75rem; }
+.cam-action-row .kiosk-btn-secondary { width: auto; flex: 1; }
+
 /* ── Done Screen ── */
 .kiosk-done { text-align: center; }
 .done-party { font-size: 3.5rem; margin-bottom: 0.75rem; }
@@ -2173,26 +2144,15 @@ textarea.admin-textarea:focus {
 .kiosk-card.fade-in { animation: kioskIn .4s ease-out; }
 @keyframes kioskIn { from { opacity:0; transform: translateY(16px) scale(0.98); } to { opacity:1; transform: translateY(0) scale(1); } }
 
-/* ── Responsive ── */
-@media (max-width: 1024px) {
-  .deco { opacity: 0.6; }
-  .pos-tl-far, .pos-bc-left-low, .sign { display: none; }
-  .pos-tl { width: 120px; } .pos-ml { width: 140px; }
-  .pos-tr { width: 140px; } .pos-mr { width: 130px; }
-  .pos-br-up { width: 140px; }
-}
+/* ── Responsive ──
+   Phone: <=480px · Tablet: 481-1023px · Desktop/PC: >=1024px */
 @media (max-width: 768px) {
-  .deco { opacity: 0.35; }
-  .pos-tl{width:90px} .pos-ml{width:100px;left:-3%}
-  .pos-tr{width:100px} .pos-mr{width:90px;right:-3%}
-  .pos-bl{width:100px} .pos-br{width:100px} .pos-br-up{width:100px}
-  .pos-bc-left{width:120px}
-  .sign,.pos-bc-left-low,.pos-bl-up { display:none; }
   .kiosk-job-grid { grid-template-columns: repeat(3, 1fr); }
   .kiosk-card { padding: 1.5rem 1.3rem; }
 }
 @media (max-width: 480px) {
-  .deco-layer { display: none; }
+  .kiosk-logo { padding-top: 1rem; margin-bottom: 0.75rem; }
+  .kiosk-logo img { height: 44px; }
   .kiosk-content { padding: 0 0.75rem 1.5rem; }
   .kiosk-card { padding: 1.3rem 1rem; border-radius: 16px; }
   .kiosk-title { font-size: 1.35rem; }
@@ -2200,9 +2160,26 @@ textarea.admin-textarea:focus {
   .kiosk-job-tile { padding: 0.7rem 0.3rem; }
   .job-tile-icon { font-size: 1.4rem; width: 38px; height: 38px; }
   .job-tile-label { font-size: 0.65rem; }
+  .cam-box { max-width: 300px; }
+  .shutter-btn { width: 64px; height: 64px; }
+  .shutter-circle { width: 46px; height: 46px; }
+}
+/* Short/landscape phones — the 2:3 camera box + full card can exceed the
+   viewport height, so trim vertical padding instead of relying on scroll alone. */
+@media (max-height: 480px) and (orientation: landscape) {
+  .kiosk-logo { padding-top: 0.6rem; margin-bottom: 0.4rem; }
+  .kiosk-logo img { height: 36px; }
+  .kiosk-content { padding: 0 1rem 1rem; }
+  .kiosk-card { padding: 1rem 1.3rem; }
+  .cam-box { max-width: 220px; }
+  .step-indicator, .step-label { margin-bottom: 0.3rem; }
 }
 @media (min-width: 1024px) {
-  .kiosk-content { max-width: 580px; padding-top: 1rem; }
+  .kiosk-content { max-width: 580px; }
   .kiosk-card.wide { max-width: 720px; }
+}
+@media (min-width: 1440px) {
+  .kiosk-content { max-width: 640px; }
+  .kiosk-card.wide { max-width: 780px; }
 }
 

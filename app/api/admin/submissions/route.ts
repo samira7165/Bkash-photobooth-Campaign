@@ -11,16 +11,12 @@ export async function GET(req: NextRequest) {
   return withAdminAuth(req, async (req) => {
     try {
       const { searchParams } = new URL(req.url);
-      const campaignId = searchParams.get('campaignId');
       const status = searchParams.get('status');
       const search = searchParams.get('search');
       const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1);
       const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20));
 
       const where: any = {};
-      if (campaignId && campaignId !== 'all') {
-        where.campaignId = campaignId;
-      }
       if (status && status !== 'all' && VALID_STATUSES.includes(status)) {
         where.status = status;
       }
@@ -34,7 +30,6 @@ export async function GET(req: NextRequest) {
           orderBy: { createdAt: 'desc' },
           skip: (page - 1) * limit,
           take: limit,
-          include: { campaign: { select: { id: true, name: true } } },
         }),
         prisma.session.count({ where }),
       ]);
@@ -52,7 +47,6 @@ export async function GET(req: NextRequest) {
         hasGeneratedImage: !!s.generatedImagePath,
         smsSent: s.smsSent,
         errorMessage: s.errorMessage,
-        campaign: s.campaign,
         createdAt: s.createdAt,
         updatedAt: s.updatedAt,
       }));
