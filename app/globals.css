@@ -6,6 +6,12 @@
   padding: 0;
 }
 
+.motion-step {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 :root {
   --bg: #0a0c10;
   --surface: #13161d;
@@ -2161,6 +2167,12 @@ textarea.admin-textarea:focus {
   .kiosk-card { padding: 1.5rem 1.3rem; }
 }
 @media (max-width: 480px) {
+  .kiosk {
+    background-image: url('/mobile-background.png');
+    background-position: center bottom;
+    background-size: cover;
+  }
+
   .kiosk-logo { padding-top: 1rem; margin-bottom: 0.75rem; }
   .kiosk-logo img { height: 44px; }
   .kiosk-content { padding: 0 0.75rem 1.5rem; }

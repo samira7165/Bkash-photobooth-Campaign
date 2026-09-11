@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { createSession } from '@/services/api';
 
 interface Props {
-  onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; gender: string }) => void;
+  onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; college: string; gender: string }) => void;
 }
 
 export default function StepInfo({ onComplete }: Props) {
-  const [info, setInfo] = useState({ name: '', phone: '', email: '', gender: '' });
+  const [info, setInfo] = useState({ name: '', phone: '', email: '', college: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -81,6 +81,12 @@ export default function StepInfo({ onComplete }: Props) {
             onChange={(e) => setInfo({ ...info, email: e.target.value })} />
         </div>
         {errors.email && <span className="field-err">{errors.email}</span>}
+      </div>
+
+      <div className="kiosk-field no-icon">
+        <label>Which college do you want to get admitted to? <span className="opt">(optional)</span></label>
+        <input type="text" placeholder="Enter college name" value={info.college}
+          onChange={(e) => setInfo({ ...info, college: e.target.value })} />
       </div>
 
       <div className="kiosk-field">

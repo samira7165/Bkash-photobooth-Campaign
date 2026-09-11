@@ -5,6 +5,7 @@ import StepInfo from '@/components/StepInfo';
 import StepDreamJob from '@/components/StepDreamJob';
 import StepCamera from '@/components/StepCamera';
 import StepDone from '@/components/StepDone';
+import { MotionLogo, MotionStep } from '@/components/MotionStep';
 
 type Step = 'info' | 'dreamJob' | 'camera' | 'done';
 
@@ -29,10 +30,11 @@ export default function Home() {
   return (
     <div className="kiosk">
       <div className="kiosk-inner">
-        <div className="kiosk-logo">
+        <MotionLogo>
           <img src="/logos/bkash.svg" alt="bKash" />
-        </div>
+        </MotionLogo>
         <div className="kiosk-content">
+          <MotionStep stepKey={step}>
           {step === 'info' && (
             <StepInfo
               onComplete={(id, ui) => { setSessionId(id); setPhone(ui.phone); setStep('dreamJob'); }}
@@ -58,6 +60,7 @@ export default function Home() {
               onRestart={handleRestart}
             />
           )}
+          </MotionStep>
         </div>
       </div>
     </div>

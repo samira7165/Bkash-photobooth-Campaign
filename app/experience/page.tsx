@@ -9,6 +9,7 @@ import ExperienceCareer from '@/components/experience/ExperienceCareer';
 import ExperienceCamera from '@/components/experience/ExperienceCamera';
 import ExperienceProcessing from '@/components/experience/ExperienceProcessing';
 import ExperienceSuccess from '@/components/experience/ExperienceSuccess';
+import { MotionLogo, MotionStep } from '@/components/MotionStep';
 
 type Step = 'loading' | 'noEvent' | 'landing' | 'info' | 'career' | 'camera' | 'processing' | 'success' | 'error';
 
@@ -59,10 +60,11 @@ function ExperienceFlow() {
   return (
     <div className="kiosk">
       <div className="kiosk-inner">
-        <div className="kiosk-logo">
+        <MotionLogo>
           <img src="/logos/bkash.svg" alt="bKash" />
-        </div>
+        </MotionLogo>
         <div className="kiosk-content">
+          <MotionStep stepKey={step}>
           {step === 'loading' && (
             <div className="kiosk-card fade-in" style={{ textAlign: 'center' }}>
               <div className="kiosk-spinner-lg" />
@@ -119,6 +121,7 @@ function ExperienceFlow() {
               <button className="kiosk-btn-secondary" onClick={handleRestart}>Start Over</button>
             </div>
           )}
+          </MotionStep>
         </div>
       </div>
     </div>

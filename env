@@ -1,5 +1,5 @@
 # MySQL connection string for Prisma
-DATABASE_URL="mysql://root:your_password@localhost:3306/photobooth"
+DATABASE_URL="mysql://2VZiSE89Jc7tNkU.root:a7uR19GkntFiura9@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/photobooth?sslaccept=strict"
 
 # SMS Provider (plug in your provider)
 SMS_API_URL=https://your-sms-provider.com/api/send
@@ -20,7 +20,7 @@ UPLOAD_DIR=./uploads
 # Mobile QR experience + download portal
 DOWNLOAD_TOKEN_TTL_DAYS=30
 OTP_TTL_MINUTES=5
-DOWNLOAD_SESSION_SECRET=change_me_to_a_long_random_string
+DOWNLOAD_SESSION_SECRET=02cfcddb7864e06398f6753fcf17f3a4e2b4f169a5bf8bf0c91ede6fbf9029f2
 
 # XRI SMS Gateway — used for OTP delivery and the post-processing notification SMS
 XRI_SMS_API_URL=https://xribd.cloud/send-otp

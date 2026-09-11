@@ -6,6 +6,7 @@ export interface ExperienceInfoData {
   name: string;
   phone: string;
   email: string;
+  college: string;
   gender: string;
 }
 
@@ -17,7 +18,7 @@ interface Props {
 const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
 
 export default function ExperienceInfo({ onComplete }: Props) {
-  const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', gender: '' });
+  const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', college: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = () => {
@@ -66,6 +67,12 @@ export default function ExperienceInfo({ onComplete }: Props) {
         <input type="email" placeholder="you@example.com" value={info.email}
           onChange={(e) => setInfo({ ...info, email: e.target.value })} />
         {errors.email && <span className="field-err">{errors.email}</span>}
+      </div>
+
+      <div className="kiosk-field no-icon">
+        <label>Which college do you want to get admitted to? <span className="opt">(optional)</span></label>
+        <input type="text" placeholder="Enter college name" value={info.college}
+          onChange={(e) => setInfo({ ...info, college: e.target.value })} />
       </div>
 
       <div className="kiosk-field">
