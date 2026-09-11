@@ -4,6 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
 import { normalizePhone } from '@/lib/utils';
+import { frameOriginalPhoto } from '@/lib/original-photo-frame';
+import { brandGeneratedPhoto } from '@/lib/generated-photo-logo';
 
 export const dynamic = 'force-dynamic';
 
@@ -89,8 +91,12 @@ export async function GET(
       return NextResponse.json({ message: `${type} file not available` }, { status: 404 });
     }
 
-    const buffer = fs.readFileSync(filepath);
-    const ext = path.extname(filepath).toLowerCase();
+    const buffer = type === 'original'
+      ? await frameOriginalPhoto(filepath)
+      : type === 'ai'
+        ? await brandGeneratedPhoto(filepath, path.join(process.cwd(), 'public', 'logos', 'bkash.svg'))
+        : fs.readFileSync(filepath);
+    const ext = type === 'original' || type === 'ai' ? '.jpg' : path.extname(filepath).toLowerCase();
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
 
     const forceDownload = req.nextUrl.searchParams.get('download') === '1';
@@ -110,7 +116,7 @@ export async function GET(
       headers['Cache-Control'] = 'private, max-age=3600';
     }
 
-    return new NextResponse(buffer, { headers });
+    return new NextResponse(new Uint8Array(buffer), { headers });
   } catch (error: any) {
     console.error('[API] Serve download file error:', error.message);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
