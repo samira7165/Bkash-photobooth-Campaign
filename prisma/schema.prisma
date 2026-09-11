@@ -62,24 +62,6 @@ model JobBaseImage {
   @@map("job_base_images")
 }
 
-// One reference poster image per job (12 presets + a shared 'Other'
-// fallback for custom jobs). Sent to the AI alongside the user's photo at
-// generation time with instructions to preserve its design/text exactly
-// and only generate the background + person — see
-// lib/ai-generation.ts's buildReferencePosterPrompt.
-model JobOverlay {
-  id        String   @id @default(uuid())
-  job       String   @unique @db.VarChar(100)
-  imagePath String   @db.VarChar(500)
-  imageUrl  String   @db.VarChar(500)
-  width     Int
-  height    Int
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("job_overlays")
-}
-
 model FaceSwapSettings {
   id        String   @id @db.VarChar(20)
   apiUrl    String?  @db.VarChar(500)

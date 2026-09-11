@@ -7,7 +7,6 @@ import {
   AnalyticsData,
   DashboardStats,
   EventData,
-  JobOverlay,
   ParticipantRow,
   ParticipantStats,
   ParticipantsResponse,
@@ -28,14 +27,12 @@ import {
   createUser,
   deletePromptTemplate,
   deleteProvider,
-  deleteJobOverlay,
   deleteSubmission,
   deleteUser,
   getAnalytics,
   getCurrentAdmin,
   getDashboardStats,
   getEvents,
-  getJobOverlays,
   getParticipantStats,
   getParticipants,
   getProviders,
@@ -44,7 +41,6 @@ import {
   getSubmissions,
   getUsers,
   previewPrompt,
-  uploadJobOverlay,
   resetProvider,
   resetUserPassword,
   updateEvent,
@@ -62,7 +58,6 @@ type Section =
   | 'analytics'
   | 'providers'
   | 'prompts'
-  | 'overlays'
   | 'submissions'
   | 'participants'
   | 'queue'
@@ -73,7 +68,6 @@ const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: 'analytics', label: 'Analytics' },
   { id: 'providers', label: 'AI Providers' },
   { id: 'prompts', label: 'Prompts' },
-  { id: 'overlays', label: 'Job Overlays' },
   { id: 'submissions', label: 'Submissions' },
   { id: 'participants', label: 'Mobile Experience' },
   { id: 'queue', label: 'Queue Monitor' },
@@ -85,7 +79,6 @@ const SECTION_TITLES: Record<Section, string> = {
   analytics: 'Analytics',
   providers: 'AI Providers',
   prompts: 'Prompt Templates',
-  overlays: 'Job Overlays',
   submissions: 'Submissions',
   participants: 'Mobile Experience',
   queue: 'Queue Monitor',
@@ -229,8 +222,7 @@ type ConfirmAction =
   | { kind: 'submission'; type: 'bulk' }
   | { kind: 'provider'; provider: Provider }
   | { kind: 'user'; user: AdminUser }
-  | { kind: 'prompt'; template: PromptTemplate }
-  | { kind: 'overlay'; job: string };
+  | { kind: 'prompt'; template: PromptTemplate };
 
 interface PromptFormState {
   name: string;
@@ -670,31 +662,6 @@ export default function AdminPage() {
     }
   }, [showError]);
 
-  // ── Job Overlays ──
-  const [jobOverlays, setJobOverlays] = useState<JobOverlay[]>([]);
-  const [uploadingOverlayFor, setUploadingOverlayFor] = useState<string | null>(null);
-  const loadJobOverlays = useCallback(async () => {
-    try {
-      setJobOverlays(await getJobOverlays());
-    } catch (e: any) {
-      showError(e.message || 'Failed to load job overlays');
-    }
-  }, [showError]);
-
-  async function handleOverlayFileChange(job: string, file: File | null) {
-    if (!file) return;
-    setUploadingOverlayFor(job);
-    try {
-      await uploadJobOverlay(job, file);
-      await loadJobOverlays();
-      showToast('Reference poster uploaded', 'success');
-    } catch (e: any) {
-      showError(e.message || 'Failed to upload overlay');
-    } finally {
-      setUploadingOverlayFor(null);
-    }
-  }
-
   const [showPromptForm, setShowPromptForm] = useState(false);
   const [editingPromptTemplate, setEditingPromptTemplate] = useState<PromptTemplate | null>(null);
   const [promptForm, setPromptForm] = useState<PromptFormState>(EMPTY_PROMPT_FORM);
@@ -864,10 +831,6 @@ export default function AdminPage() {
         await deletePromptTemplate(confirmAction.template.id);
         await loadPromptTemplates();
         showToast('Template deleted', 'success');
-      } else if (confirmAction.kind === 'overlay') {
-        await deleteJobOverlay(confirmAction.job);
-        await loadJobOverlays();
-        showToast('Overlay deleted', 'success');
       }
     } catch (e: any) {
       showError(e.message || 'Failed to delete');
@@ -925,11 +888,6 @@ export default function AdminPage() {
     if (!admin || section !== 'prompts') return;
     loadPromptTemplates();
   }, [admin, section, loadPromptTemplates]);
-
-  useEffect(() => {
-    if (!admin || section !== 'overlays') return;
-    loadJobOverlays();
-  }, [admin, section, loadJobOverlays]);
 
   useEffect(() => {
     if (!admin || section !== 'submissions') return;
@@ -1147,15 +1105,6 @@ export default function AdminPage() {
             templates={promptTemplates}
             onEdit={openEditPromptForm}
             onDelete={(t) => setConfirmAction({ kind: 'prompt', template: t })}
-          />
-        )}
-
-        {section === 'overlays' && (
-          <OverlaysSection
-            overlays={jobOverlays}
-            uploadingFor={uploadingOverlayFor}
-            onFileChange={handleOverlayFileChange}
-            onDelete={(job) => setConfirmAction({ kind: 'overlay', job })}
           />
         )}
 
@@ -1733,9 +1682,6 @@ export default function AdminPage() {
     if (action.kind === 'prompt') {
       return `Delete template "${action.template.name}"?`;
     }
-    if (action.kind === 'overlay') {
-      return `Delete the overlay for "${action.job}"? Images for this job will use the raw AI photo (or the "Other" fallback) until a new overlay is uploaded.`;
-    }
     return `Delete user "${action.user.displayName}"? This cannot be undone.`;
   }
 }
@@ -2105,81 +2051,6 @@ function PromptsSection({
           </div>
         </div>
       ))}
-    </div>
-  );
-}
-
-
-function OverlaysSection({
-  overlays,
-  uploadingFor,
-  onFileChange,
-  onDelete,
-}: {
-  overlays: JobOverlay[];
-  uploadingFor: string | null;
-  onFileChange: (job: string, file: File | null) => void;
-  onDelete: (job: string) => void;
-}) {
-  const byJob = new Map(overlays.map((o) => [o.job, o]));
-
-  return (
-    <div>
-      <p className="admin-provider-meta" style={{ marginBottom: '1rem' }}>
-        Each image is sent to the AI as a reference poster — it's instructed to preserve the design/text exactly and only generate the background and place the person. No transparency needed; a fully opaque design works fine.
-      </p>
-      <div className="admin-campaign-grid">
-      {JOB_OPTIONS.map((job) => {
-        const overlay = byJob.get(job);
-        const busy = uploadingFor === job;
-        return (
-          <div className="admin-campaign-card" key={job}>
-            <div className="admin-campaign-top">
-              <span className="admin-campaign-name">{job}</span>
-            </div>
-            {overlay ? (
-              <img
-                src={overlay.imageUrl}
-                alt={`${job} overlay`}
-                style={{ width: '100%', borderRadius: 8, background: '#111', marginBottom: '0.5rem' }}
-              />
-            ) : (
-              <div className="admin-empty" style={{ padding: '1.5rem 0' }}>No overlay uploaded</div>
-            )}
-            {overlay && (
-              <div className="admin-provider-meta">
-                {overlay.width} × {overlay.height}px
-              </div>
-            )}
-            <div className="admin-campaign-actions" style={{ marginTop: '0.75rem' }}>
-              <label className="btn-secondary admin-btn-sm" style={{ cursor: 'pointer' }}>
-                {busy ? 'Uploading…' : overlay ? 'Replace' : 'Upload'}
-                <input
-                  type="file"
-                  accept="image/png,image/webp"
-                  style={{ display: 'none' }}
-                  disabled={busy}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    e.target.value = '';
-                    onFileChange(job, file);
-                  }}
-                />
-              </label>
-              {overlay && (
-                <button
-                  className="btn-secondary admin-btn-sm admin-btn-danger"
-                  onClick={() => onDelete(job)}
-                  disabled={busy}
-                >
-                  Delete
-                </button>
-              )}
-            </div>
-          </div>
-        );
-      })}
-      </div>
     </div>
   );
 }

@@ -9,34 +9,6 @@ import {
   markAiProviderSuccess,
 } from './provider-manager';
 import { buildPrompt, BuiltPrompt } from './prompt-builder';
-import { findOverlayForJob } from './overlay-compositor';
-
-const POSTER_WIDTH = 1200;
-const POSTER_HEIGHT = 1800;
-
-/**
- * Prompt used when an admin-uploaded reference poster exists for this job.
- * The AI receives the reference image + the user's photo and is instructed
- * to preserve the reference's design/text exactly, only generating the
- * background and placing the person into it.
- */
-function buildReferencePosterPrompt(job: string): string {
-  return `You are generating a photorealistic "Dream Career" poster.
-
-I am providing two images:
-1. REFERENCE POSTER — the exact design template you MUST preserve. Keep the frame, all text, logos, colors, and layout EXACTLY as shown — do not change, translate, misspell, move, resize, or omit any text or design element from it.
-2. USER PHOTO — the person who must appear in the poster. Preserve their exact facial features, skin tone, hairstyle, ethnicity, and age with the highest possible accuracy. The person must be immediately recognizable as the same individual from this photo.
-
-Task: Recreate the reference poster exactly as-is, but place the person from the user photo naturally into the scene as a professional ${job}, dressed appropriately for that role. You may generate or adjust the background/scene behind them to fit a realistic ${job} setting, but the poster's frame, text, and design elements must remain identical to the reference.
-
-RULES:
-- Reproduce ALL text from the reference EXACTLY — same wording, same spelling, same position.
-- The person's face must be pixel-accurate to the user photo — same identity, unmistakably recognizable.
-- Show them naturally framed within the reference's composition.
-- Photorealistic, professional photography lighting, natural skin texture, sharp focus, high resolution.
-- Output must be exactly ${POSTER_WIDTH}x${POSTER_HEIGHT} pixels, vertical 2:3 portrait format.
-- Do not add any watermark, signature, or extra text beyond what's in the reference.`;
-}
 
 interface GenerateParams {
   originalImagePath: string;
@@ -134,9 +106,8 @@ async function generateDemoImage(
  * Generate the user's dream job photo via a direct image-to-image pipeline:
  * Takes the user's captured photo and prompt, and transforms the user's
  * clothes and surroundings into their dream job while preserving their real face.
- * Returns the raw AI (or demo) photo — no overlay composited yet.
  */
-async function generateRawPhoto(params: GenerateParams, referenceImagePath: string | null): Promise<string> {
+export async function generateImage(params: GenerateParams): Promise<string> {
   const { originalImagePath, job, gender, name } = params;
 
   const uploadDir = process.env.UPLOAD_DIR || './uploads';
@@ -167,18 +138,10 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
     base64Image,
   );
 
-  // When a reference poster exists for this job, Gemini/OpenAI get a
-  // dedicated two-image prompt instead — the reference's design/text is
-  // preserved exactly, only the background + person are generated.
-  const referencePrompt = referenceImagePath ? buildReferencePosterPrompt(job) : null;
-
   console.log(`[AI] Prompt template: "${built.templateName}"`);
-  console.log(`[AI] Prompt: ${referencePrompt || built.prompt}`);
+  console.log(`[AI] Prompt: ${built.prompt}`);
   if (built.negativePrompt) {
     console.log(`[AI] Negative prompt: ${built.negativePrompt}`);
-  }
-  if (referenceImagePath) {
-    console.log(`[AI] Using reference poster: ${referenceImagePath}`);
   }
 
   const maxAttempts = 5;
@@ -199,7 +162,7 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
       try {
         console.log(`[AI] Attempting generation via .env AI_API_URL: ${envUrl}`);
         if (isGeminiUrl(envUrl)) {
-          return await callGeminiApi(envKey, null, referencePrompt || built.prompt, originalImagePath, outputPath, referenceImagePath);
+          return await callGeminiApi(envKey, null, built.prompt, originalImagePath, outputPath);
         } else if (isReplicateUrl(envUrl)) {
           return await callReplicateApi(
             envUrl,
@@ -211,7 +174,7 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
             outputPath,
           );
         } else if (isOpenAiUrl(envUrl)) {
-          return await callOpenAiApi(envUrl, envKey, null, referencePrompt || built.prompt, originalImagePath, outputPath, referenceImagePath);
+          return await callOpenAiApi(envUrl, envKey, null, built.prompt, originalImagePath, outputPath);
         } else {
           return await callAiApi(envUrl, envKey, null, built, outputPath);
         }
@@ -232,10 +195,9 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
         finalPath = await callGeminiApi(
           provider.apiKey,
           provider.model,
-          referencePrompt || built.prompt,
+          built.prompt,
           originalImagePath,
           outputPath,
-          referenceImagePath,
         );
       } else if (isReplicateUrl(provider.apiUrl)) {
         finalPath = await callReplicateApi(
@@ -252,10 +214,9 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
           provider.apiUrl,
           provider.apiKey,
           provider.model,
-          referencePrompt || built.prompt,
+          built.prompt,
           originalImagePath,
           outputPath,
-          referenceImagePath,
         );
       } else {
         finalPath = await callAiApi(
@@ -282,41 +243,6 @@ async function generateRawPhoto(params: GenerateParams, referenceImagePath: stri
 }
 
 /**
- * Generates the dream-job poster. If an admin has uploaded a reference
- * poster for this job (or the 'Other' fallback), it's sent to the AI
- * alongside the user's photo with instructions to preserve the reference's
- * design/text exactly and only generate the background + person — so the
- * frame/text come from the AI matching the reference, not from a fixed
- * code-side composite. Falls back to the plain single-image generation
- * (no reference) if no overlay has been uploaded for this job yet.
- *
- * Either way, the final output is strictly resized/cropped to exactly
- * 1200x1800 as a safety net, since providers don't always honor the
- * requested output size.
- */
-export async function generateImage(params: GenerateParams): Promise<string> {
-  const { job } = params;
-
-  const overlay = await findOverlayForJob(job);
-  if (!overlay) {
-    console.warn(`[Overlay] No reference poster uploaded for job="${job}" (or fallback 'Other') — generating without one`);
-  }
-
-  const rawPhotoPath = await generateRawPhoto(params, overlay?.imagePath || null);
-
-  const uploadDir = process.env.UPLOAD_DIR || './uploads';
-  const generatedDir = path.join(uploadDir, 'generated');
-  const finalPath = path.join(generatedDir, `poster_${uuidv4()}.png`);
-
-  await sharp(rawPhotoPath)
-    .resize(POSTER_WIDTH, POSTER_HEIGHT, { fit: 'cover', position: 'center' })
-    .png()
-    .toFile(finalPath);
-
-  return finalPath;
-}
-
-/**
  * Google Gemini Multimodal Image Generation / Editing:
  * Sends the user's photo together with the face-preserving dream job prompt.
  */
@@ -326,7 +252,6 @@ async function callGeminiApi(
   prompt: string,
   inputPath: string,
   outputPath: string,
-  referenceImagePath?: string | null,
 ): Promise<string> {
   const modelName = model || DEFAULT_GEMINI_MODEL;
   const url = `https://${GEMINI_HOST}/v1beta/models/${modelName}:generateContent`;
@@ -335,29 +260,19 @@ async function callGeminiApi(
   const base64Image = imageBuffer.toString('base64');
   const mimeType = mimeTypeFor(inputPath);
 
-  const parts: any[] = [];
-
-  if (referenceImagePath && fs.existsSync(referenceImagePath)) {
-    const refBuffer = fs.readFileSync(referenceImagePath);
-    parts.push({
+  const parts: any[] = [
+    {
       inlineData: {
-        mimeType: mimeTypeFor(referenceImagePath),
-        data: refBuffer.toString('base64'),
+        mimeType,
+        data: base64Image,
       },
-    });
-  }
-
-  parts.push({
-    inlineData: {
-      mimeType,
-      data: base64Image,
     },
-  });
-  parts.push({
-    text: prompt,
-  });
+    {
+      text: prompt,
+    },
+  ];
 
-  console.log(`[AI] Calling Gemini (${modelName}) multimodal image transformation${referenceImagePath ? ' with reference poster' : ''}...`);
+  console.log(`[AI] Calling Gemini (${modelName}) multimodal image transformation...`);
 
   const response = await axios.post(
     url,
@@ -517,23 +432,18 @@ async function callOpenAiApi(
   prompt: string,
   inputPath: string,
   outputPath: string,
-  referenceImagePath?: string | null,
 ): Promise<string> {
   const targetUrl = apiUrl.includes('/images/') ? apiUrl : 'https://api.openai.com/v1/images/edits';
   const imageBuffer = fs.readFileSync(inputPath);
   const mimeType = mimeTypeFor(inputPath);
 
   const form = new FormData();
-  if (referenceImagePath && fs.existsSync(referenceImagePath)) {
-    const refBuffer = fs.readFileSync(referenceImagePath);
-    form.append('image[]', new Blob([refBuffer], { type: mimeTypeFor(referenceImagePath) }), path.basename(referenceImagePath));
-  }
-  form.append('image[]', new Blob([imageBuffer], { type: mimeType }), path.basename(inputPath));
+  form.append('image', new Blob([imageBuffer], { type: mimeType }), path.basename(inputPath));
   form.append('prompt', prompt);
   form.append('model', model || 'gpt-image-1');
   form.append('size', '1024x1536');
 
-  console.log(`[AI] Calling OpenAI images/edits (model: ${model || 'gpt-image-1'})${referenceImagePath ? ' with reference poster' : ''}...`);
+  console.log(`[AI] Calling OpenAI images/edits (model: ${model || 'gpt-image-1'})...`);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120_000);
