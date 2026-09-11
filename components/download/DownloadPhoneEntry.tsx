@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { requestDownloadOtp } from '@/services/api';
 
 interface Props {
+  initialPhone?: string;
   onComplete: (phone: string) => void;
 }
 
-export default function DownloadPhoneEntry({ onComplete }: Props) {
-  const [phone, setPhone] = useState('');
+export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Props) {
+  const [phone, setPhone] = useState(initialPhone);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -30,13 +31,13 @@ export default function DownloadPhoneEntry({ onComplete }: Props) {
   };
 
   return (
-    <div className="download-card">
-      <h2 className="download-title">Find your images</h2>
-      <p className="download-sub">Enter the mobile number you used when you took your picture</p>
+    <form className="download-card download-search" onSubmit={(event) => { event.preventDefault(); submit(); }}>
 
       <div className="download-field">
-        <label>Mobile Number</label>
+        <label htmlFor="download-phone">Phone Number</label>
         <input
+          id="download-phone"
+          autoComplete="tel"
           type="tel"
           placeholder="+880 1XX XXXX XXX"
           value={phone}
@@ -45,9 +46,9 @@ export default function DownloadPhoneEntry({ onComplete }: Props) {
         {error && <span className="download-err">{error}</span>}
       </div>
 
-      <button className="download-btn-primary" onClick={submit} disabled={loading}>
-        {loading ? 'Sending code…' : 'Continue'}
+      <button className="download-btn-primary" type="submit" disabled={loading}>
+        {loading ? 'Sending code…' : 'Search'}
       </button>
-    </div>
+    </form>
   );
 }

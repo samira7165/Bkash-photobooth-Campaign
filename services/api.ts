@@ -138,6 +138,8 @@ export async function verifyDownloadOtp(phone: string, otp: string): Promise<voi
 }
 
 export interface DownloadSubmission {
+  name: string;
+  career: string;
   id: string;
   label: string;
   originalUrl: string | null;

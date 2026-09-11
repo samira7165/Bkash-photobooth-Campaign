@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { selectJob } from '@/services/api';
 
 const JOBS = [
@@ -83,9 +84,18 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
         {JOBS.map((job) => (
           <button
             key={job}
-            className={`kiosk-job-tile ${selected === job ? 'selected' : ''}`}
+            className={`kiosk-job-tile kiosk-job-tile-visual ${selected === job ? 'selected' : ''}`}
+            aria-pressed={selected === job}
             onClick={() => pick(job)}
           >
+            <Image
+              className="job-tile-image"
+              src={`/careers/${job.toLowerCase().replace(/ /g, '-')}.png`}
+              alt=""
+              width={240}
+              height={240}
+              sizes="(max-width: 768px) 30vw, 150px"
+            />
             <span className="job-tile-label">
               {job}
             </span>
@@ -100,9 +110,18 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
 
 
         <button
-          className={`kiosk-job-tile ${selected === 'Other' ? 'selected' : ''}`}
+          className={`kiosk-job-tile kiosk-job-tile-visual ${selected === 'Other' ? 'selected' : ''}`}
+          aria-pressed={selected === 'Other'}
           onClick={() => pick('Other')}
         >
+          <Image
+            className="job-tile-image"
+            src="/careers/other.png"
+            alt=""
+            width={240}
+            height={240}
+            sizes="(max-width: 768px) 30vw, 150px"
+          />
           <span className="job-tile-label">
             Other
           </span>

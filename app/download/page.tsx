@@ -13,8 +13,16 @@ export default function DownloadPage() {
 
   return (
     <div className="download-page">
-      {step === 'phone' && (
+      <main className="download-layout">
+        <header className="download-hero">
+          <img src="/logos/bkash.svg" alt="bKash" className="download-brand" />
+          <p className="download-eyebrow">Your dream. Your story.</p>
+          <h1>Find Your Dream Career Photo</h1>
+          <p>Enter the phone number you used at the photobooth to retrieve your files.</p>
+        </header>
+      {step !== 'otp' && (
         <DownloadPhoneEntry
+          initialPhone={phone}
           onComplete={(p) => { setPhone(p); setStep('otp'); }}
         />
       )}
@@ -25,6 +33,7 @@ export default function DownloadPage() {
         />
       )}
       {step === 'gallery' && <DownloadGallery />}
+      </main>
     </div>
   );
 }

@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
     const mobileSubmissions = participants.flatMap((participant) =>
       participant.images.map((image) => ({
         id: image.id,
+        name: participant.name,
+        career: participant.career,
         label: `${participant.career} — ${participant.event.name}`,
         originalUrl: image.originalImageUrl ? `/api/download/file/mobile/${image.id}/original` : null,
         aiUrl: image.aiImageUrl ? `/api/download/file/mobile/${image.id}/ai` : null,
@@ -51,6 +53,8 @@ export async function GET(req: NextRequest) {
       .filter((s) => s.originalImagePath || s.generatedImagePath)
       .map((s) => ({
         id: s.id,
+        name: s.name,
+        career: s.customJob || s.selectedJob || 'Dream Job',
         label: `${s.customJob || s.selectedJob || 'Dream Job'} — Event Booth`,
         originalUrl: s.originalImagePath ? `/api/download/file/booth/${s.id}/original` : null,
         aiUrl: s.generatedImagePath ? `/api/download/file/booth/${s.id}/ai` : null,

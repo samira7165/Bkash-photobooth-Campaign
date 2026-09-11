@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import SiteMotion from '@/components/SiteMotion';
 
 export const metadata: Metadata = {
   title: 'AI Photobooth — Dream Job',
@@ -25,7 +26,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body><SiteMotion>{children}</SiteMotion></body>
     </html>
   );
 }

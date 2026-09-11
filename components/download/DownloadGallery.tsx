@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { getDownloadGallery, DownloadSubmission } from '@/services/api';
 
 function triggerDownload(url: string) {
@@ -12,7 +12,7 @@ function triggerDownload(url: string) {
   document.body.removeChild(a);
 }
 
-function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
+function SubmissionCard({ submission, onComicDownload }: { submission: DownloadSubmission; onComicDownload: () => void }) {
   const [downloadingAll, setDownloadingAll] = useState(false);
 
   const downloadAll = async () => {
@@ -23,6 +23,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
       await new Promise((r) => setTimeout(r, 400));
     }
     setDownloadingAll(false);
+    if (submission.comicBookUrl) onComicDownload();
   };
 
   if (submission.processingStatus === 'queued' || submission.processingStatus === 'processing') {
@@ -45,9 +46,9 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
   }
 
   const items = [
+    { key: 'ai', label: 'AI Generated Image', url: submission.aiUrl },
     { key: 'original', label: 'Original Photo', url: submission.originalUrl },
-    { key: 'ai', label: 'Dream Career Image', url: submission.aiUrl },
-    { key: 'comic-book', label: 'Comic Book', url: submission.comicBookUrl },
+    { key: 'comic-book', label: 'Career PDF', url: submission.comicBookUrl },
   ].filter((item) => item.url);
 
   return (
@@ -56,19 +57,45 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
         {items.map((item) => (
           <div className="download-item" key={item.key}>
             {item.key === 'comic-book' ? (
-              <div className="download-item-pdf-icon">PDF</div>
+              <div className="download-comic-cover">
+                <span>Career</span>
+                <strong>DREAM<br />EDITION</strong>
+                <small>Your future starts here</small>
+              </div>
             ) : (
               <img className="download-item-preview" src={item.url!} alt={item.label} />
             )}
             <span className="download-item-label">{item.label}</span>
-            <a className="download-item-btn" href={`${item.url}?download=1`} download>
-              Download
+            {item.key === 'comic-book' && (
+              <a
+                className="download-item-btn download-preview-btn"
+                href={item.url!}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Preview comic (opens in a new tab)"
+                onClick={onComicDownload}
+              >
+                Preview PDF
+              </a>
+            )}
+            <a
+              className="download-item-btn"
+              href={`${item.url}?download=1`}
+              download
+              onClick={item.key === 'comic-book' ? (event) => {
+                event.preventDefault();
+                triggerDownload(`${item.url}?download=1`);
+                onComicDownload();
+              } : undefined}
+            >
+              <span>{item.key === 'comic-book' ? 'Download PDF' : 'Download'}</span>
+              <span aria-hidden="true">↓</span>
             </a>
           </div>
         ))}
       </div>
 
-      <button className="download-btn-primary" onClick={downloadAll} disabled={downloadingAll}>
+      <button className="download-btn-primary download-all-btn" onClick={downloadAll} disabled={downloadingAll}>
         {downloadingAll ? 'Downloading…' : 'Download All'}
       </button>
     </div>
@@ -76,6 +103,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
 }
 
 export default function DownloadGallery() {
+  const popupRef = useRef<HTMLDialogElement>(null);
   const [submissions, setSubmissions] = useState<DownloadSubmission[] | null>(null);
   const [error, setError] = useState('');
 
@@ -103,18 +131,39 @@ export default function DownloadGallery() {
   }
 
   return (
-    <div className="download-card wide">
-      <h2 className="download-title">Your images are ready</h2>
-      <p className="download-sub">Preview and download each item below, or download everything at once.</p>
+    <section className="download-results" aria-label="Your photos and comic">
 
       {submissions.map((submission) => (
         <div key={submission.id} className="download-submission">
+          <div className="download-person">
+            <span className="download-avatar" aria-hidden="true">{submission.name?.charAt(0).toUpperCase() || 'Y'}</span>
+            <dl>
+              <div><dt>Name</dt><dd>{submission.name}</dd></div>
+              <div><dt>Selected career</dt><dd>{submission.career}</dd></div>
+              <div><dt>Generation date</dt><dd>{new Date(submission.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Dhaka' })}</dd></div>
+            </dl>
+          </div>
           {submissions.length > 1 && (
             <p className="download-submission-heading">{submission.label}</p>
           )}
-          <SubmissionCard submission={submission} />
+          <SubmissionCard submission={submission} onComicDownload={() => popupRef.current?.showModal()} />
         </div>
       ))}
-    </div>
+      <dialog
+        ref={popupRef}
+        className="comic-download-popup"
+        aria-label="UIU campaign information"
+        onClick={(event) => {
+          if (event.target === event.currentTarget) popupRef.current?.close();
+        }}
+      >
+        <div className="comic-download-popup-content">
+          <form method="dialog">
+            <button className="comic-download-popup-close" aria-label="Close popup" autoFocus>&times;</button>
+          </form>
+          <img src="/documents/UIU_PVC-Output.jpg" alt="UIU campaign information" />
+        </div>
+      </dialog>
+    </section>
   );
 }
