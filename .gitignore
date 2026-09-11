@@ -6,7 +6,9 @@ uploads/original/*
 uploads/generated/*
 uploads/participant-original/*
 uploads/event-pdfs/*
+uploads/comic/*
 !uploads/original/.gitkeep
 !uploads/generated/.gitkeep
 !uploads/participant-original/.gitkeep
 !uploads/event-pdfs/.gitkeep
+!uploads/comic/.gitkeep

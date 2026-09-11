@@ -1,5 +1,5 @@
 import { generateImage } from './ai-generation';
-import { sendSms } from './sms';
+import { sendXriSms } from './sms-gateway';
 import { processNextParticipantJob } from './participant-queue';
 import prisma from './db';
 
@@ -46,16 +46,16 @@ export async function processNextJob() {
         data: { generatedImagePath, status: 'generated' },
       });
 
-      const retrievalUrl = `${process.env.RETRIEVAL_URL || 'http://localhost:3000/gallery'}?p=${encodeURIComponent(session.phone)}`;
-      const message = `Hi ${session.name}! Your dream job photo as a ${selectedJob} is ready! View: ${retrievalUrl}`;
+      const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
+      const message = `Hi ${session.name}! Your dream job photo as a ${selectedJob} is ready. Visit ${downloadLink} and enter your phone number to view and download your image.`;
 
       try {
-        await sendSms(session.phone, message);
+        await sendXriSms(session.phone, message);
         await prisma.session.update({
           where: { id: session.id },
           data: {
             smsSent: true,
-            smsShortUrl: retrievalUrl,
+            smsShortUrl: downloadLink,
             status: 'sms_sent',
           },
         });
@@ -64,7 +64,7 @@ export async function processNextJob() {
         console.error(`[Queue] SMS failed: ${smsErr.message}`);
         await prisma.session.update({
           where: { id: session.id },
-          data: { smsShortUrl: retrievalUrl, smsSent: false },
+          data: { smsShortUrl: downloadLink, smsSent: false },
         });
       }
     } catch (err: any) {

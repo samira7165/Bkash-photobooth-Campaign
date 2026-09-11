@@ -16,7 +16,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
   const [downloadingAll, setDownloadingAll] = useState(false);
 
   const downloadAll = async () => {
-    const urls = [submission.originalUrl, submission.aiUrl, submission.comicUrl, submission.pdfUrl].filter(Boolean) as string[];
+    const urls = [submission.originalUrl, submission.aiUrl, submission.comicBookUrl].filter(Boolean) as string[];
     setDownloadingAll(true);
     for (const url of urls) {
       triggerDownload(`${url}?download=1`);
@@ -29,7 +29,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
     return (
       <div className="download-item-group">
         <h3 className="download-title">Still preparing your image</h3>
-        <p className="download-sub">Your {submission.career} image isn&apos;t quite ready yet. Please check back in a minute.</p>
+        <p className="download-sub">Your {submission.label} image isn&apos;t quite ready yet. Please check back in a minute.</p>
         <div className="download-spinner" />
       </div>
     );
@@ -39,7 +39,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
     return (
       <div className="download-item-group">
         <h3 className="download-title">We couldn&apos;t create your image</h3>
-        <p className="download-sub">Something went wrong while generating your {submission.career} photo. Please contact the event organizer.</p>
+        <p className="download-sub">Something went wrong while generating your {submission.label} photo. Please contact the event organizer.</p>
       </div>
     );
   }
@@ -47,8 +47,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
   const items = [
     { key: 'original', label: 'Original Photo', url: submission.originalUrl },
     { key: 'ai', label: 'Dream Career Image', url: submission.aiUrl },
-    { key: 'comic', label: 'Comic Image', url: submission.comicUrl },
-    { key: 'pdf', label: 'Event PDF', url: submission.pdfUrl },
+    { key: 'comic-book', label: 'Comic Book', url: submission.comicBookUrl },
   ].filter((item) => item.url);
 
   return (
@@ -56,7 +55,7 @@ function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
       <div className="download-gallery-grid">
         {items.map((item) => (
           <div className="download-item" key={item.key}>
-            {item.key === 'pdf' ? (
+            {item.key === 'comic-book' ? (
               <div className="download-item-pdf-icon">PDF</div>
             ) : (
               <img className="download-item-preview" src={item.url!} alt={item.label} />
@@ -109,9 +108,9 @@ export default function DownloadGallery() {
       <p className="download-sub">Preview and download each item below, or download everything at once.</p>
 
       {submissions.map((submission) => (
-        <div key={submission.imageId} className="download-submission">
+        <div key={submission.id} className="download-submission">
           {submissions.length > 1 && (
-            <p className="download-submission-heading">{submission.eventName} — {submission.career}</p>
+            <p className="download-submission-heading">{submission.label}</p>
           )}
           <SubmissionCard submission={submission} />
         </div>

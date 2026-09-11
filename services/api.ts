@@ -138,13 +138,11 @@ export async function verifyDownloadOtp(phone: string, otp: string): Promise<voi
 }
 
 export interface DownloadSubmission {
-  imageId: string;
-  eventName: string;
-  career: string;
+  id: string;
+  label: string;
   originalUrl: string | null;
   aiUrl: string | null;
-  comicUrl: string | null;
-  pdfUrl: string | null;
+  comicBookUrl: string | null;
   processingStatus: string;
   createdAt: string;
 }
@@ -160,7 +158,7 @@ export interface EventData {
   id: string;
   name: string;
   isActive: boolean;
-  hasPdf: boolean;
+  hasComicBook: boolean;
   participantCount: number;
   createdAt: string;
 }
@@ -170,23 +168,23 @@ export async function getEvents(): Promise<EventData[]> {
   return handle(res);
 }
 
-export async function createEvent(data: { name: string; isActive?: boolean; pdf?: File }): Promise<EventData> {
+export async function createEvent(data: { name: string; isActive?: boolean; comicBook?: File }): Promise<EventData> {
   const fd = new FormData();
   fd.append('name', data.name);
   if (data.isActive !== undefined) fd.append('isActive', String(data.isActive));
-  if (data.pdf) fd.append('pdf', data.pdf);
+  if (data.comicBook) fd.append('pdf', data.comicBook);
   const res = await fetch('/api/admin/events', { method: 'POST', body: fd });
   return handle(res);
 }
 
 export async function updateEvent(
   id: string,
-  data: { name?: string; isActive?: boolean; pdf?: File },
+  data: { name?: string; isActive?: boolean; comicBook?: File },
 ): Promise<EventData> {
   const fd = new FormData();
   if (data.name !== undefined) fd.append('name', data.name);
   if (data.isActive !== undefined) fd.append('isActive', String(data.isActive));
-  if (data.pdf) fd.append('pdf', data.pdf);
+  if (data.comicBook) fd.append('pdf', data.comicBook);
   const res = await fetch(`/api/admin/events/${id}`, { method: 'PUT', body: fd });
   return handle(res);
 }

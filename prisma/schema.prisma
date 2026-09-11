@@ -38,6 +38,7 @@ model Session {
   smsSent            Boolean       @default(false)
   smsShortUrl        String?       @db.VarChar(500)
   queuePosition      Int?
+  downloadCount      Int           @default(0)
   errorMessage       String?       @db.Text
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
@@ -200,7 +201,6 @@ model Image {
   participantId    String
   originalImageUrl String?                @db.VarChar(500)
   aiImageUrl       String?                @db.VarChar(500)
-  comicImageUrl    String?                @db.VarChar(500)
   processingStatus ImageProcessingStatus  @default(queued)
   downloadCount    Int                    @default(0)
   errorMessage     String?                @db.Text

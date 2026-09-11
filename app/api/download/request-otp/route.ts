@@ -12,11 +12,12 @@ export async function POST(req: NextRequest) {
 
     const normalizedPhone = normalizePhone(phone.trim());
 
-    const participant = await prisma.participant.findFirst({
-      where: { phone: normalizedPhone },
-    });
+    const [participant, session] = await Promise.all([
+      prisma.participant.findFirst({ where: { phone: normalizedPhone } }),
+      prisma.session.findFirst({ where: { phone: normalizedPhone } }),
+    ]);
 
-    if (!participant) {
+    if (!participant && !session) {
       return NextResponse.json(
         { message: 'No photos found for this phone number. Please check the number and try again.' },
         { status: 404 },

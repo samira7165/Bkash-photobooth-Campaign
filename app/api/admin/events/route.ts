@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
         id: e.id,
         name: e.name,
         isActive: e.isActive,
-        hasPdf: !!e.pdfPath,
+        hasComicBook: !!e.pdfPath,
         participantCount: e._count.participants,
         createdAt: e.createdAt,
       }));

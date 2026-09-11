@@ -462,7 +462,7 @@ export default function AdminPage() {
   }, [showError]);
 
   const [newEventName, setNewEventName] = useState('');
-  const [newEventPdf, setNewEventPdf] = useState<File | null>(null);
+  const [newEventComicBook, setNewEventComicBook] = useState<File | null>(null);
   const [eventSaving, setEventSaving] = useState(false);
 
   async function submitNewEvent(e: React.FormEvent) {
@@ -473,9 +473,9 @@ export default function AdminPage() {
     }
     setEventSaving(true);
     try {
-      await createEvent({ name: newEventName.trim(), isActive: true, pdf: newEventPdf || undefined });
+      await createEvent({ name: newEventName.trim(), isActive: true, comicBook: newEventComicBook || undefined });
       setNewEventName('');
-      setNewEventPdf(null);
+      setNewEventComicBook(null);
       await loadEvents();
       showToast('Event created', 'success');
     } catch (e: any) {
@@ -491,6 +491,16 @@ export default function AdminPage() {
       await loadEvents();
     } catch (e: any) {
       showError(e.message || 'Failed to update event');
+    }
+  }
+
+  async function uploadEventComicBook(eventId: string, file: File) {
+    try {
+      await updateEvent(eventId, { comicBook: file });
+      await loadEvents();
+      showToast('Comic book updated', 'success');
+    } catch (e: any) {
+      showError(e.message || 'Failed to upload comic book');
     }
   }
 
@@ -1123,10 +1133,10 @@ export default function AdminPage() {
             stats={participantStats}
             events={events}
             newEventName={newEventName}
-            newEventPdf={newEventPdf}
+            newEventComicBook={newEventComicBook}
             eventSaving={eventSaving}
             onNewEventNameChange={setNewEventName}
-            onNewEventPdfChange={setNewEventPdf}
+            onNewEventComicBookChange={setNewEventComicBook}
             onSubmitNewEvent={submitNewEvent}
             onToggleEvent={toggleEventActive}
             participants={participants}
@@ -1137,6 +1147,7 @@ export default function AdminPage() {
             participantRangeTo={participantRangeTo}
             onPrevPage={() => setParticipantPage((p) => Math.max(1, p - 1))}
             onNextPage={() => setParticipantPage((p) => Math.min(participantTotalPages, p + 1))}
+            onUploadEventComicBook={uploadEventComicBook}
           />
         )}
 
@@ -2233,10 +2244,10 @@ function ParticipantsSection({
   stats,
   events,
   newEventName,
-  newEventPdf,
+  newEventComicBook,
   eventSaving,
   onNewEventNameChange,
-  onNewEventPdfChange,
+  onNewEventComicBookChange,
   onSubmitNewEvent,
   onToggleEvent,
   participants,
@@ -2247,14 +2258,15 @@ function ParticipantsSection({
   participantRangeTo,
   onPrevPage,
   onNextPage,
+  onUploadEventComicBook,
 }: {
   stats: ParticipantStats | null;
   events: EventData[];
   newEventName: string;
-  newEventPdf: File | null;
+  newEventComicBook: File | null;
   eventSaving: boolean;
   onNewEventNameChange: (v: string) => void;
-  onNewEventPdfChange: (f: File | null) => void;
+  onNewEventComicBookChange: (f: File | null) => void;
   onSubmitNewEvent: (e: React.FormEvent) => void;
   onToggleEvent: (ev: EventData) => void;
   participants: ParticipantsResponse | null;
@@ -2265,7 +2277,20 @@ function ParticipantsSection({
   participantRangeTo: number;
   onPrevPage: () => void;
   onNextPage: () => void;
+  onUploadEventComicBook: (eventId: string, file: File) => Promise<void>;
 }) {
+  const [uploadingComicBookFor, setUploadingComicBookFor] = useState<string | null>(null);
+
+  const handleComicBookFileChange = async (eventId: string, file: File | null) => {
+    if (!file) return;
+    setUploadingComicBookFor(eventId);
+    try {
+      await onUploadEventComicBook(eventId, file);
+    } finally {
+      setUploadingComicBookFor(null);
+    }
+  };
+
   return (
     <>
       <div className="admin-stats-grid">
@@ -2312,12 +2337,15 @@ function ParticipantsSection({
             onChange={(e) => onNewEventNameChange(e.target.value)}
             style={{ flex: 1, minWidth: 180 }}
           />
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => onNewEventPdfChange(e.target.files?.[0] || null)}
-            style={{ maxWidth: 220 }}
-          />
+          <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.78rem', color: '#8a8f9c' }}>
+            Comic Book PDF (optional)
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={(e) => onNewEventComicBookChange(e.target.files?.[0] || null)}
+              style={{ maxWidth: 220 }}
+            />
+          </label>
           <button type="submit" className="btn-primary admin-btn-inline" disabled={eventSaving}>
             {eventSaving ? 'Creating…' : '+ Create Event'}
           </button>
@@ -2332,7 +2360,7 @@ function ParticipantsSection({
                 <tr>
                   <th>Name</th>
                   <th>Active</th>
-                  <th>PDF</th>
+                  <th>Comic Book</th>
                   <th>Participants</th>
                   <th>Created</th>
                 </tr>
@@ -2350,7 +2378,20 @@ function ParticipantsSection({
                         <span className="admin-toggle-knob" />
                       </button>
                     </td>
-                    <td>{ev.hasPdf ? '✓' : '—'}</td>
+                    <td>
+                      <label className="admin-btn-sm btn-secondary" style={{ cursor: 'pointer' }}>
+                        {uploadingComicBookFor === ev.id
+                          ? 'Uploading…'
+                          : ev.hasComicBook ? 'Replace' : 'Upload'}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          style={{ display: 'none' }}
+                          disabled={uploadingComicBookFor === ev.id}
+                          onChange={(e) => handleComicBookFileChange(ev.id, e.target.files?.[0] || null)}
+                        />
+                      </label>
+                    </td>
                     <td>{ev.participantCount}</td>
                     <td>{new Date(ev.createdAt).toLocaleDateString()}</td>
                   </tr>
