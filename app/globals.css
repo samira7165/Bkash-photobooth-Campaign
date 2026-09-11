@@ -2307,3 +2307,15 @@ textarea.admin-textarea:focus {
   .download-search .download-btn-primary { padding-inline: 1rem; }
 }
 
+.terms-and-conditions { width: 100%; margin: 1rem 0; color: #333; font-size: 0.85rem; line-height: 1.5; text-align: left; }
+.terms-details { border: 1px solid #efbfd3; border-radius: 10px; background: #fff9fc; overflow: hidden; }
+.terms-details summary { padding: 0.75rem 1rem; color: #a30f56; font-weight: 600; cursor: pointer; }
+.terms-content { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; border-top: 1px solid #efbfd3; white-space: pre-line; overflow-wrap: anywhere; }
+.terms-agreement { display: flex; align-items: flex-start; gap: 0.65rem; margin-top: 0.8rem; cursor: pointer; }
+.terms-agreement input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: #e2136e; }
+.terms-error { color: #b42318; margin-top: 0.4rem; }
+.kiosk-card .terms-agreement { color: #fff; }
+.kiosk-card .terms-error { color: #ffd0df; }
+.terms-and-conditions :focus-visible { outline: 3px solid #a30f56; outline-offset: 3px; }
+.download-layout .download-search { flex-wrap: wrap; }
+.download-search .terms-and-conditions { order: 3; flex-basis: 100%; margin: 0.5rem 0 0; }

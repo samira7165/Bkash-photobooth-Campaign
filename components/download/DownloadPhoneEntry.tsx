@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import TermsAndConditions from '@/components/TermsAndConditions';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { requestDownloadOtp } from '@/services/api';
 
@@ -10,6 +11,8 @@ interface Props {
 }
 
 export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Props) {
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState('');
   const [phone, setPhone] = useState(initialPhone);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,6 +26,11 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
       setError(PHONE_VALIDATION_MESSAGE);
       return;
     }
+    if (!acceptedTerms) {
+      setTermsError('Please agree to the Terms and Conditions to continue');
+      return;
+    }
+    setTermsError('');
     setLoading(true);
     setError('');
     try {
@@ -50,6 +58,8 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
         />
         {error && <span className="download-err">{error}</span>}
       </div>
+
+      <TermsAndConditions accepted={acceptedTerms} onChange={(accepted) => { setAcceptedTerms(accepted); setTermsError(''); }} error={termsError} />
 
       <button className="download-btn-primary" type="submit" disabled={loading}>
         {loading ? 'Sending code…' : 'Search'}

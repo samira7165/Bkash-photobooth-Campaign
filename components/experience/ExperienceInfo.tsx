@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import TermsAndConditions from '@/components/TermsAndConditions';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 export interface ExperienceInfoData {
@@ -17,10 +18,12 @@ interface Props {
 
 export default function ExperienceInfo({ onComplete }: Props) {
   const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', college: '', gender: '' });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = () => {
     const errs: Record<string, string> = {};
+    if (!acceptedTerms) errs.terms = 'Please agree to the Terms and Conditions to continue';
     if (!info.name.trim()) errs.name = 'Name is required';
     if (!info.phone.trim()) errs.phone = 'Phone number is required';
     else if (!isValidPhone(info.phone)) errs.phone = PHONE_VALIDATION_MESSAGE;
@@ -85,6 +88,8 @@ export default function ExperienceInfo({ onComplete }: Props) {
         </div>
         {errors.gender && <span className="field-err">{errors.gender}</span>}
       </div>
+
+      <TermsAndConditions accepted={acceptedTerms} onChange={setAcceptedTerms} error={errors.terms} />
 
       <button className="kiosk-btn-primary" onClick={handleSubmit}>
         <span>Continue</span>
