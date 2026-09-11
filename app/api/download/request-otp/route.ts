@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { normalizePhone } from '@/lib/utils';
+import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { sendOtp } from '@/lib/sms';
 
 export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
-    if (!phone?.trim()) {
+    if ((typeof phone !== 'string' || !phone.trim())) {
       return NextResponse.json({ message: 'Phone number is required' }, { status: 400 });
+    }
+
+    if (!isValidPhone(phone)) {
+      return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
     }
 
     const normalizedPhone = normalizePhone(phone.trim());

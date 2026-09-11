@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { requestDownloadOtp } from '@/services/api';
 
 interface Props {
@@ -16,6 +17,10 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
   const submit = async () => {
     if (!phone.trim()) {
       setError('Please enter your mobile number');
+      return;
+    }
+    if (!isValidPhone(phone)) {
+      setError(PHONE_VALIDATION_MESSAGE);
       return;
     }
     setLoading(true);

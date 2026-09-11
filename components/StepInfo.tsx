@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { createSession } from '@/services/api';
 
 interface Props {
@@ -16,6 +17,7 @@ export default function StepInfo({ onComplete }: Props) {
     const errs: Record<string, string> = {};
     if (!info.name.trim()) errs.name = 'Name is required';
     if (!info.phone.trim()) errs.phone = 'Phone number is required';
+    else if (!isValidPhone(info.phone)) errs.phone = PHONE_VALIDATION_MESSAGE;
     if (!info.gender) errs.gender = 'Please select your gender';
     if (info.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(info.email))
       errs.email = 'Invalid email';

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { createParticipant } from '@/services/api';
 import { ExperienceInfoData } from './ExperienceInfo';
 
@@ -53,16 +54,25 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
       </div>
       <p className="step-label">STEP 2 OF 4</p>
 
-      <h2 className="kiosk-title">What&apos;s your dream career?</h2>
-      <p className="kiosk-sub">Pick one to see yourself in the role</p>
+      <h2 className="kiosk-title">What do you want to be when you grow up?</h2>
+      <p className="kiosk-sub">Pick your dream job</p>
 
       <div className="kiosk-job-grid">
         {CAREERS.map((career) => (
           <button
             key={career}
-            className={`kiosk-job-tile ${selected === career ? 'selected' : ''}`}
+            className={`kiosk-job-tile kiosk-job-tile-visual ${selected === career ? 'selected' : ''}`}
+            aria-pressed={selected === career}
             onClick={() => setSelected(career)}
           >
+            <Image
+              className="job-tile-image"
+              src={`/careers/${career.toLowerCase().replace(/ /g, '-')}.png`}
+              alt=""
+              width={240}
+              height={240}
+              sizes="(max-width: 768px) 30vw, 150px"
+            />
             <span className="job-tile-label">{career}</span>
             {selected === career && <span className="job-check">✓</span>}
           </button>

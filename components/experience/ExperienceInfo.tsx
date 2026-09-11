@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 export interface ExperienceInfoData {
   name: string;
@@ -14,9 +15,6 @@ interface Props {
   onComplete: (info: ExperienceInfoData) => void;
 }
 
-// Phone format check: digits, spaces, +, -, () allowed, at least 7 digits total.
-const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
-
 export default function ExperienceInfo({ onComplete }: Props) {
   const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', college: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -25,7 +23,7 @@ export default function ExperienceInfo({ onComplete }: Props) {
     const errs: Record<string, string> = {};
     if (!info.name.trim()) errs.name = 'Name is required';
     if (!info.phone.trim()) errs.phone = 'Phone number is required';
-    else if (!PHONE_RE.test(info.phone.trim())) errs.phone = 'Enter a valid phone number';
+    else if (!isValidPhone(info.phone)) errs.phone = PHONE_VALIDATION_MESSAGE;
     if (!info.gender) errs.gender = 'Please select your gender';
     if (info.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(info.email))
       errs.email = 'Invalid email';

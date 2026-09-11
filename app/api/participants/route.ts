@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { normalizePhone } from '@/lib/utils';
+import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 const VALID_CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
@@ -16,9 +16,13 @@ export async function POST(req: NextRequest) {
     if (!name?.trim()) {
       return NextResponse.json({ message: 'Name is required' }, { status: 400 });
     }
-    if (!phone?.trim()) {
+    if ((typeof phone !== 'string' || !phone.trim())) {
       return NextResponse.json({ message: 'Phone number is required' }, { status: 400 });
     }
+    if (!isValidPhone(phone)) {
+      return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
+    }
+
     if (!['male', 'female'].includes(gender)) {
       return NextResponse.json({ message: 'Gender must be male or female' }, { status: 400 });
     }

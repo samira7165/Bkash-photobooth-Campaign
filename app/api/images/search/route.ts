@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { normalizePhone } from '@/lib/utils';
+import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +10,10 @@ export async function GET(req: NextRequest) {
 
     if (!phone) {
       return NextResponse.json({ message: 'Phone number is required' }, { status: 400 });
+    }
+
+    if (!isValidPhone(phone)) {
+      return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
     }
 
     const normalized = normalizePhone(phone);

@@ -1,13 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { normalizePhone } from '@/lib/utils';
+import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { verifyOtp } from '@/lib/sms';
 import { createDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
 
 export async function POST(req: NextRequest) {
   try {
     const { phone, otp } = await req.json();
-    if (!phone?.trim() || !otp?.trim()) {
+    if ((typeof phone !== 'string' || !phone.trim()) || !otp?.trim()) {
       return NextResponse.json({ message: 'Phone number and code are required' }, { status: 400 });
+    }
+
+    if (!isValidPhone(phone)) {
+      return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
     }
 
     const normalizedPhone = normalizePhone(phone.trim());
