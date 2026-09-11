@@ -4,10 +4,10 @@ export async function brandGeneratedPhoto(photoPath: string, logoPath: string): 
   const { data: photo, info } = await sharp(photoPath)
     .rotate()
     .toBuffer({ resolveWithObject: true });
-  const margin = Math.round(Math.min(info.width, info.height) * 0.025);
   const logo = await sharp(logoPath)
+    .trim()
     .resize({
-      width: Math.max(1, Math.round(info.width * 0.24)),
+      width: Math.max(1, Math.round(info.width * 0.3)),
       height: Math.max(1, Math.round(info.height * 0.2)),
       fit: 'inside',
     })
@@ -17,8 +17,8 @@ export async function brandGeneratedPhoto(photoPath: string, logoPath: string): 
   return sharp(photo)
     .composite([{
       input: logo.data,
-      left: info.width - logo.info.width - margin,
-      top: margin,
+      left: info.width - logo.info.width,
+      top: 0,
     }])
     .jpeg({ quality: 95 })
     .toBuffer();

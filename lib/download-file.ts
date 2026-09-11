@@ -94,7 +94,7 @@ export async function serveDownloadFile(
     const buffer = type === 'original'
       ? await frameOriginalPhoto(filepath)
       : type === 'ai'
-        ? await brandGeneratedPhoto(filepath, path.join(process.cwd(), 'public', 'logos', 'images.png'))
+        ? await brandGeneratedPhoto(filepath, path.join(process.cwd(), 'public', 'logos', 'Logo.png'))
         : fs.readFileSync(filepath);
     const ext = type === 'original' || type === 'ai' ? '.jpg' : path.extname(filepath).toLowerCase();
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
