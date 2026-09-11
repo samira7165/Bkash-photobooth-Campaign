@@ -2022,6 +2022,16 @@ textarea.admin-textarea:focus {
 }
 .field-err { color: #FFD700; font-size: 0.8rem; margin-top: 0.3rem; display: block; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
+/* Icon-less field variant — used by the no-emoji mobile experience pages */
+.kiosk-field.no-icon input { padding-left: 0.9rem; }
+
+/* ── Loading spinner (mobile experience processing screen) ── */
+.kiosk-spinner-lg {
+  width: 56px; height: 56px; margin: 1rem auto;
+  border: 4px solid rgba(255,255,255,0.2); border-top-color: #fff;
+  border-radius: 50%; animation: kioskSpin 0.8s linear infinite;
+}
+
 /* ── Gender Buttons ── */
 .kiosk-card .gender-row { display: flex; gap: 0.75rem; }
 .kiosk-card .gender-btn {
@@ -2181,5 +2191,90 @@ textarea.admin-textarea:focus {
 @media (min-width: 1440px) {
   .kiosk-content { max-width: 640px; }
   .kiosk-card.wide { max-width: 780px; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   DOWNLOAD PORTAL
+   A plain, fast-loading public utility page (opened from an
+   SMS link on any device) — deliberately not the branded fixed
+   kiosk background, just a clean centered card.
+   ═══════════════════════════════════════════════════════ */
+
+.download-page {
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: #f4f5f7;
+}
+
+.download-card {
+  width: 100%;
+  max-width: 440px;
+  background: #ffffff;
+  border: 1px solid #e2e4e9;
+  border-radius: 16px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+}
+.download-card.wide { max-width: 640px; }
+
+.download-title { font-size: 1.4rem; font-weight: 700; color: #16181d; margin-bottom: 0.35rem; }
+.download-sub { font-size: 0.92rem; color: #5b606b; margin-bottom: 1.5rem; line-height: 1.5; }
+
+.download-field { margin-bottom: 1.1rem; }
+.download-field label { display: block; font-size: 0.85rem; font-weight: 600; color: #16181d; margin-bottom: 0.4rem; }
+.download-field input {
+  width: 100%; padding: 0.8rem 0.9rem;
+  background: #f7f8fa; border: 1px solid #d8dbe1;
+  border-radius: 10px; color: #16181d; font-family: inherit; font-size: 0.95rem;
+  outline: none; transition: all .2s;
+}
+.download-field input:focus { border-color: #e2136e; box-shadow: 0 0 0 3px rgba(226,19,110,0.1); }
+.download-err { color: #c0392b; font-size: 0.82rem; margin-top: 0.4rem; display: block; }
+
+.download-btn-primary {
+  width: 100%; padding: 0.85rem 1.4rem; margin-top: 0.5rem;
+  background: #e2136e; color: #fff; border: none; border-radius: 10px;
+  font-family: inherit; font-size: 1rem; font-weight: 600; cursor: pointer;
+  transition: opacity .2s;
+}
+.download-btn-primary:hover:not(:disabled) { opacity: 0.9; }
+.download-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.download-btn-link {
+  display: block; width: 100%; text-align: center; margin-top: 0.9rem;
+  background: none; border: none; color: #e2136e; font-family: inherit;
+  font-size: 0.85rem; font-weight: 600; cursor: pointer;
+}
+.download-btn-link:disabled { color: #9aa0ab; cursor: not-allowed; }
+
+.download-gallery-grid { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+.download-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.85rem; border: 1px solid #e2e4e9; border-radius: 12px;
+}
+.download-item-preview {
+  width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
+  background: #f0f1f3; flex-shrink: 0;
+}
+.download-item-pdf-icon {
+  width: 64px; height: 64px; border-radius: 8px; background: #f0f1f3;
+  display: flex; align-items: center; justify-content: center;
+  color: #5b606b; font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+}
+.download-item-label { flex: 1; font-size: 0.92rem; font-weight: 600; color: #16181d; }
+.download-item-btn {
+  padding: 0.55rem 1rem; background: #16181d; color: #fff; border: none;
+  border-radius: 8px; font-family: inherit; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer; text-decoration: none; flex-shrink: 0;
+}
+
+.download-spinner {
+  width: 40px; height: 40px; margin: 1rem auto;
+  border: 3px solid #e2e4e9; border-top-color: #e2136e;
+  border-radius: 50%; animation: kioskSpin 0.8s linear infinite;
 }
 

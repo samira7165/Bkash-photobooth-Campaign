@@ -140,3 +140,90 @@ model AdminSession {
   @@index([token])
   @@map("admin_sessions")
 }
+
+// ═══════════════════════════════════════════════════════════
+// Mobile QR experience + download portal
+// Separate from Session/the physical booth flow by design —
+// Event/Participant/Image/Otp back the two new public journeys.
+// ═══════════════════════════════════════════════════════════
+
+enum ParticipantGender {
+  male
+  female
+}
+
+enum ImageProcessingStatus {
+  queued
+  processing
+  generated
+  sms_sent
+  failed
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(150)
+  pdfPath   String?  @db.VarChar(500)
+  pdfName   String?  @db.VarChar(255)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants Participant[]
+
+  @@map("events")
+}
+
+model Participant {
+  id        String            @id @default(uuid())
+  name      String            @db.VarChar(100)
+  phone     String            @db.VarChar(20)
+  email     String?           @db.VarChar(150)
+  gender    ParticipantGender
+  career    String            @db.VarChar(100)
+  eventId   String
+  createdAt DateTime          @default(now())
+
+  event  Event   @relation(fields: [eventId], references: [id])
+  images Image[]
+
+  @@unique([phone, eventId])
+  @@index([phone])
+  @@index([eventId])
+  @@map("participants")
+}
+
+model Image {
+  id               String                 @id @default(uuid())
+  participantId    String
+  originalImageUrl String?                @db.VarChar(500)
+  aiImageUrl       String?                @db.VarChar(500)
+  comicImageUrl    String?                @db.VarChar(500)
+  downloadToken    String                 @unique @db.VarChar(64)
+  tokenExpiresAt   DateTime
+  processingStatus ImageProcessingStatus  @default(queued)
+  downloadCount    Int                    @default(0)
+  errorMessage     String?                @db.Text
+  smsSent          Boolean                @default(false)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  participant Participant @relation(fields: [participantId], references: [id])
+
+  @@index([participantId])
+  @@index([downloadToken])
+  @@index([processingStatus])
+  @@map("images")
+}
+
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String   @db.VarChar(20)
+  otpCode   String   @db.VarChar(6)
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@map("otps")
+}

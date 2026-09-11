@@ -68,6 +68,182 @@ async function handle<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+// ─── Mobile QR Experience (Journey 1) ───
+
+export async function getActiveEvent(): Promise<{ id: string; name: string } | null> {
+  const res = await fetch('/api/events/active');
+  return handle(res);
+}
+
+export async function createParticipant(data: {
+  name: string;
+  phone: string;
+  email?: string;
+  gender: string;
+  career: string;
+  eventId: string;
+}): Promise<{ participantId: string }> {
+  const res = await fetch('/api/participants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  return handle(res);
+}
+
+export async function uploadParticipantImage(
+  participantId: string,
+  imageBlob: Blob,
+): Promise<{ imageId: string }> {
+  const formData = new FormData();
+  formData.append('image', imageBlob, 'capture.jpg');
+  const res = await fetch(`/api/participants/${participantId}/image`, {
+    method: 'POST',
+    body: formData,
+  });
+  return handle(res);
+}
+
+export interface ParticipantStatus {
+  processingStatus: string;
+  errorMessage?: string | null;
+}
+
+export async function getParticipantStatus(participantId: string): Promise<ParticipantStatus> {
+  const res = await fetch(`/api/participants/${participantId}/status`);
+  return handle(res);
+}
+
+// ─── Download Portal (Journey 2) ───
+
+export async function resolveDownloadToken(token: string): Promise<{ valid: boolean }> {
+  const res = await fetch(`/api/download/${token}/resolve`);
+  return handle(res);
+}
+
+export async function requestDownloadOtp(token: string, phone: string): Promise<void> {
+  const res = await fetch(`/api/download/${token}/request-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  });
+  await handle(res);
+}
+
+export async function verifyDownloadOtp(token: string, phone: string, otp: string): Promise<void> {
+  const res = await fetch(`/api/download/${token}/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, otp }),
+  });
+  await handle(res);
+}
+
+export interface DownloadGallery {
+  originalUrl: string | null;
+  aiUrl: string | null;
+  comicUrl: string | null;
+  pdfUrl: string | null;
+  processingStatus: string;
+}
+
+export async function getDownloadGallery(token: string): Promise<DownloadGallery> {
+  const res = await fetch(`/api/download/${token}/gallery`, { credentials: 'include' });
+  return handle(res);
+}
+
+// ─── Admin: Events ───
+
+export interface EventData {
+  id: string;
+  name: string;
+  isActive: boolean;
+  hasPdf: boolean;
+  participantCount: number;
+  createdAt: string;
+}
+
+export async function getEvents(): Promise<EventData[]> {
+  const res = await fetch('/api/admin/events');
+  return handle(res);
+}
+
+export async function createEvent(data: { name: string; isActive?: boolean; pdf?: File }): Promise<EventData> {
+  const fd = new FormData();
+  fd.append('name', data.name);
+  if (data.isActive !== undefined) fd.append('isActive', String(data.isActive));
+  if (data.pdf) fd.append('pdf', data.pdf);
+  const res = await fetch('/api/admin/events', { method: 'POST', body: fd });
+  return handle(res);
+}
+
+export async function updateEvent(
+  id: string,
+  data: { name?: string; isActive?: boolean; pdf?: File },
+): Promise<EventData> {
+  const fd = new FormData();
+  if (data.name !== undefined) fd.append('name', data.name);
+  if (data.isActive !== undefined) fd.append('isActive', String(data.isActive));
+  if (data.pdf) fd.append('pdf', data.pdf);
+  const res = await fetch(`/api/admin/events/${id}`, { method: 'PUT', body: fd });
+  return handle(res);
+}
+
+// ─── Admin: Participants ───
+
+export interface ParticipantRow {
+  id: string;
+  name: string;
+  phone: string;
+  gender: string;
+  career: string;
+  eventName: string;
+  processingStatus: string;
+  downloadCount: number;
+  createdAt: string;
+}
+
+export interface ParticipantsResponse {
+  data: ParticipantRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export async function getParticipants(params: {
+  eventId?: string;
+  gender?: string;
+  career?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}): Promise<ParticipantsResponse> {
+  const qs = new URLSearchParams();
+  if (params.eventId) qs.set('eventId', params.eventId);
+  if (params.gender) qs.set('gender', params.gender);
+  if (params.career) qs.set('career', params.career);
+  if (params.search) qs.set('search', params.search);
+  if (params.page) qs.set('page', String(params.page));
+  if (params.limit) qs.set('limit', String(params.limit));
+  const res = await fetch(`/api/admin/participants?${qs.toString()}`);
+  return handle(res);
+}
+
+export interface ParticipantStats {
+  totalParticipants: number;
+  totalCompletedImages: number;
+  totalDownloads: number;
+  totalOtpSent: number;
+  otpVerified: number;
+  otpFailed: number;
+  byEvent: { eventId: string; eventName: string; count: number }[];
+}
+
+export async function getParticipantStats(): Promise<ParticipantStats> {
+  const res = await fetch('/api/admin/participants/stats');
+  return handle(res);
+}
+
 // ─── Admin: Submissions ───
 
 export interface Submission {

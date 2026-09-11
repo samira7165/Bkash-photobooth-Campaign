@@ -1,5 +1,6 @@
 import { generateImage } from './ai-generation';
 import { sendSms } from './sms';
+import { processNextParticipantJob } from './participant-queue';
 import prisma from './db';
 
 // ─── Simple DB-backed queue ───
@@ -81,6 +82,9 @@ export async function processNextJob() {
 export function startWorker() {
   if (globalForWorker.workerStarted) return;
   globalForWorker.workerStarted = true;
-  setInterval(processNextJob, 5000);
-  console.log('[Queue] Worker started — polling every 5s');
+  setInterval(() => {
+    processNextJob().catch((err) => console.error('[Queue] processNextJob crashed:', err.message));
+    processNextParticipantJob().catch((err) => console.error('[ParticipantQueue] processNextParticipantJob crashed:', err.message));
+  }, 5000);
+  console.log('[Queue] Worker started — polling every 5s (sessions + participants)');
 }

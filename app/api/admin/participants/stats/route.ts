@@ -1,0 +1,49 @@
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+import { withAdminAuth } from '@/lib/admin-guard';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(req: NextRequest) {
+  return withAdminAuth(req, async () => {
+    try {
+      const [
+        totalParticipants,
+        totalCompletedImages,
+        downloadAgg,
+        events,
+        totalOtpSent,
+        otpVerified,
+        otpFailed,
+      ] = await Promise.all([
+        prisma.participant.count(),
+        prisma.image.count({ where: { processingStatus: { in: ['generated', 'sms_sent'] } } }),
+        prisma.image.aggregate({ _sum: { downloadCount: true } }),
+        prisma.event.findMany({
+          select: { id: true, name: true, _count: { select: { participants: true } } },
+          orderBy: { createdAt: 'desc' },
+        }),
+        prisma.otp.count(),
+        prisma.otp.count({ where: { verified: true } }),
+        prisma.otp.count({ where: { verified: false, expiresAt: { lt: new Date() } } }),
+      ]);
+
+      return NextResponse.json({
+        totalParticipants,
+        totalCompletedImages,
+        totalDownloads: downloadAgg._sum.downloadCount || 0,
+        totalOtpSent,
+        otpVerified,
+        otpFailed,
+        byEvent: events.map((e) => ({
+          eventId: e.id,
+          eventName: e.name,
+          count: e._count.participants,
+        })),
+      });
+    } catch (error: any) {
+      console.error('[API] Participant stats error:', error.message);
+      return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+    }
+  });
+}

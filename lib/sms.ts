@@ -1,4 +1,7 @@
 import axios from 'axios';
+import * as crypto from 'crypto';
+import prisma from './db';
+import { sendXriSms } from './sms-gateway';
 import {
   getNextSmsProvider,
   markSmsProviderFailed,
@@ -70,17 +73,43 @@ async function callSmsApi(
 }
 
 /**
- * OTP support — scaffold for later.
+ * OTP support for the download portal — persists to the `Otp` table and
+ * verifies against it (phone + code + not expired + not already used).
  */
-export async function sendOtp(phone: string): Promise<string> {
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  await sendSms(phone, `Your Photobooth verification code is: ${otp}`);
-  // TODO: store OTP (with an expiry) for verification
-  return otp;
+export async function sendOtp(phone: string): Promise<void> {
+  const otpCode = crypto.randomInt(100000, 1000000).toString();
+  const ttlMinutes = parseInt(process.env.OTP_TTL_MINUTES || '5', 10);
+
+  // Invalidate any previously-issued, still-unverified codes for this phone
+  // so only the newest one can ever be verified.
+  await prisma.otp.updateMany({
+    where: { phone, verified: false },
+    data: { expiresAt: new Date(0) },
+  });
+
+  await prisma.otp.create({
+    data: {
+      phone,
+      otpCode,
+      expiresAt: new Date(Date.now() + ttlMinutes * 60_000),
+    },
+  });
+
+  await sendXriSms(phone, `Your verification code is: ${otpCode}. It expires in ${ttlMinutes} minutes.`);
 }
 
-export async function verifyOtp(phone: string, otp: string): Promise<boolean> {
-  // TODO: check stored OTP
-  console.warn(`[OTP TODO] Verify ${phone}: ${otp}`);
+export async function verifyOtp(phone: string, otpCode: string): Promise<boolean> {
+  const record = await prisma.otp.findFirst({
+    where: { phone, otpCode, verified: false, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!record) return false;
+
+  await prisma.otp.update({
+    where: { id: record.id },
+    data: { verified: true },
+  });
+
   return true;
 }

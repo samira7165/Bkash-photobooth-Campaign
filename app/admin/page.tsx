@@ -6,6 +6,10 @@ import {
   AdminUser,
   AnalyticsData,
   DashboardStats,
+  EventData,
+  ParticipantRow,
+  ParticipantStats,
+  ParticipantsResponse,
   PromptPreviewResult,
   PromptTemplate,
   PromptTemplateInput,
@@ -17,6 +21,7 @@ import {
   SubmissionsResponse,
   adminLogout,
   bulkDeleteSubmissions,
+  createEvent,
   createPromptTemplate,
   createProvider,
   createUser,
@@ -27,6 +32,9 @@ import {
   getAnalytics,
   getCurrentAdmin,
   getDashboardStats,
+  getEvents,
+  getParticipantStats,
+  getParticipants,
   getProviders,
   getPromptTemplates,
   getQueueStatus,
@@ -35,6 +43,7 @@ import {
   previewPrompt,
   resetProvider,
   resetUserPassword,
+  updateEvent,
   updatePromptTemplate,
   updateProvider,
   updateUser,
@@ -50,6 +59,7 @@ type Section =
   | 'providers'
   | 'prompts'
   | 'submissions'
+  | 'participants'
   | 'queue'
   | 'users';
 
@@ -59,6 +69,7 @@ const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
   { id: 'providers', icon: '🤖', label: 'AI Providers' },
   { id: 'prompts', icon: '🎯', label: 'Prompts' },
   { id: 'submissions', icon: '📨', label: 'Submissions' },
+  { id: 'participants', icon: '🎓', label: 'Mobile Experience' },
   { id: 'queue', icon: '⚡', label: 'Queue Monitor' },
   { id: 'users', icon: '👥', label: 'Users' },
 ];
@@ -69,6 +80,7 @@ const SECTION_TITLES: Record<Section, string> = {
   providers: 'AI Providers',
   prompts: 'Prompt Templates',
   submissions: 'Submissions',
+  participants: 'Mobile Experience',
   queue: 'Queue Monitor',
   users: 'Users',
 };
@@ -439,6 +451,89 @@ export default function AdminPage() {
     if (s.hasGeneratedImage) triggerDownload(downloadUrl(s.id, 'generated'));
   }
 
+  // ── Participants (mobile QR experience) ──
+  const [events, setEvents] = useState<EventData[]>([]);
+  const loadEvents = useCallback(async () => {
+    try {
+      setEvents(await getEvents());
+    } catch (e: any) {
+      showError(e.message || 'Failed to load events');
+    }
+  }, [showError]);
+
+  const [newEventName, setNewEventName] = useState('');
+  const [newEventPdf, setNewEventPdf] = useState<File | null>(null);
+  const [eventSaving, setEventSaving] = useState(false);
+
+  async function submitNewEvent(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEventName.trim()) {
+      showError('Event name is required');
+      return;
+    }
+    setEventSaving(true);
+    try {
+      await createEvent({ name: newEventName.trim(), isActive: true, pdf: newEventPdf || undefined });
+      setNewEventName('');
+      setNewEventPdf(null);
+      await loadEvents();
+      showToast('Event created', 'success');
+    } catch (e: any) {
+      showError(e.message || 'Failed to create event');
+    } finally {
+      setEventSaving(false);
+    }
+  }
+
+  async function toggleEventActive(ev: EventData) {
+    try {
+      await updateEvent(ev.id, { isActive: !ev.isActive });
+      await loadEvents();
+    } catch (e: any) {
+      showError(e.message || 'Failed to update event');
+    }
+  }
+
+  const [participantStats, setParticipantStats] = useState<ParticipantStats | null>(null);
+  const loadParticipantStats = useCallback(async () => {
+    try {
+      setParticipantStats(await getParticipantStats());
+    } catch (e: any) {
+      showError(e.message || 'Failed to load participant stats');
+    }
+  }, [showError]);
+
+  const [participantEventFilter, setParticipantEventFilter] = useState('all');
+  const [participantGenderFilter, setParticipantGenderFilter] = useState('all');
+  const [participantCareerFilter, setParticipantCareerFilter] = useState('all');
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [participantPage, setParticipantPage] = useState(1);
+  const [participants, setParticipants] = useState<ParticipantsResponse | null>(null);
+  const [participantsLoading, setParticipantsLoading] = useState(true);
+
+  const loadParticipants = useCallback(async () => {
+    setParticipantsLoading(true);
+    try {
+      const data = await getParticipants({
+        eventId: participantEventFilter,
+        gender: participantGenderFilter,
+        career: participantCareerFilter,
+        search: participantSearch,
+        page: participantPage,
+        limit: 20,
+      });
+      setParticipants(data);
+    } catch (e: any) {
+      showError(e.message || 'Failed to load participants');
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }, [participantEventFilter, participantGenderFilter, participantCareerFilter, participantSearch, participantPage, showError]);
+
+  useEffect(() => {
+    setParticipantPage(1);
+  }, [participantEventFilter, participantGenderFilter, participantCareerFilter, participantSearch]);
+
   // ── Queue monitor ──
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [queueRecent, setQueueRecent] = useState<Submission[]>([]);
@@ -790,6 +885,17 @@ export default function AdminPage() {
   }, [admin, section, loadSubmissions]);
 
   useEffect(() => {
+    if (!admin || section !== 'participants') return;
+    loadEvents();
+    loadParticipantStats();
+  }, [admin, section, loadEvents, loadParticipantStats]);
+
+  useEffect(() => {
+    if (!admin || section !== 'participants') return;
+    loadParticipants();
+  }, [admin, section, loadParticipants]);
+
+  useEffect(() => {
     if (!admin || section !== 'queue') return;
     loadQueueMonitor();
     const id = setInterval(loadQueueMonitor, 5_000);
@@ -817,6 +923,10 @@ export default function AdminPage() {
   const totalPages = submissions ? Math.max(1, Math.ceil(submissions.total / submissions.limit)) : 1;
   const rangeFrom = submissions && submissions.total > 0 ? (submissions.page - 1) * submissions.limit + 1 : 0;
   const rangeTo = submissions ? Math.min(submissions.page * submissions.limit, submissions.total) : 0;
+
+  const participantTotalPages = participants ? Math.max(1, Math.ceil(participants.total / participants.limit)) : 1;
+  const participantRangeFrom = participants && participants.total > 0 ? (participants.page - 1) * participants.limit + 1 : 0;
+  const participantRangeTo = participants ? Math.min(participants.page * participants.limit, participants.total) : 0;
 
   return (
     <div className="admin-shell">
@@ -897,6 +1007,49 @@ export default function AdminPage() {
                 </div>
               </>
             )}
+            {section === 'participants' && (
+              <>
+                <select
+                  className="admin-select"
+                  value={participantEventFilter}
+                  onChange={(e) => setParticipantEventFilter(e.target.value)}
+                >
+                  <option value="all">All Events</option>
+                  {events.map((ev) => (
+                    <option key={ev.id} value={ev.id}>{ev.name}</option>
+                  ))}
+                </select>
+                <select
+                  className="admin-select"
+                  value={participantGenderFilter}
+                  onChange={(e) => setParticipantGenderFilter(e.target.value)}
+                >
+                  <option value="all">All Genders</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <select
+                  className="admin-select"
+                  value={participantCareerFilter}
+                  onChange={(e) => setParticipantCareerFilter(e.target.value)}
+                >
+                  <option value="all">All Careers</option>
+                  {JOB_OPTIONS.filter((j) => j !== 'Other').map((job) => (
+                    <option key={job} value={job}>{job}</option>
+                  ))}
+                </select>
+                <div className="admin-search-wrap">
+                  <span className="admin-search-icon">🔍</span>
+                  <input
+                    className="admin-input"
+                    type="text"
+                    placeholder="Search phone…"
+                    value={participantSearch}
+                    onChange={(e) => setParticipantSearch(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
             {section === 'users' && (
               <button className="btn-primary admin-btn-inline" onClick={() => setShowUserForm(true)}>
                 + Add User
@@ -970,6 +1123,28 @@ export default function AdminPage() {
             onDeleteOne={(id) => setConfirmAction({ kind: 'submission', type: 'single', id })}
             onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
             onNextPage={() => setPage((p) => Math.min(totalPages, p + 1))}
+          />
+        )}
+
+        {section === 'participants' && (
+          <ParticipantsSection
+            stats={participantStats}
+            events={events}
+            newEventName={newEventName}
+            newEventPdf={newEventPdf}
+            eventSaving={eventSaving}
+            onNewEventNameChange={setNewEventName}
+            onNewEventPdfChange={setNewEventPdf}
+            onSubmitNewEvent={submitNewEvent}
+            onToggleEvent={toggleEventActive}
+            participants={participants}
+            participantsLoading={participantsLoading}
+            participantPage={participantPage}
+            participantTotalPages={participantTotalPages}
+            participantRangeFrom={participantRangeFrom}
+            participantRangeTo={participantRangeTo}
+            onPrevPage={() => setParticipantPage((p) => Math.max(1, p - 1))}
+            onNextPage={() => setParticipantPage((p) => Math.min(participantTotalPages, p + 1))}
           />
         )}
 
@@ -2052,6 +2227,201 @@ function SubmissionsSection({
             Page {page} of {totalPages}
           </span>
           <button className="btn-secondary admin-btn-sm" disabled={page >= totalPages} onClick={onNextPage}>
+            Next
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+function ParticipantsSection({
+  stats,
+  events,
+  newEventName,
+  newEventPdf,
+  eventSaving,
+  onNewEventNameChange,
+  onNewEventPdfChange,
+  onSubmitNewEvent,
+  onToggleEvent,
+  participants,
+  participantsLoading,
+  participantPage,
+  participantTotalPages,
+  participantRangeFrom,
+  participantRangeTo,
+  onPrevPage,
+  onNextPage,
+}: {
+  stats: ParticipantStats | null;
+  events: EventData[];
+  newEventName: string;
+  newEventPdf: File | null;
+  eventSaving: boolean;
+  onNewEventNameChange: (v: string) => void;
+  onNewEventPdfChange: (f: File | null) => void;
+  onSubmitNewEvent: (e: React.FormEvent) => void;
+  onToggleEvent: (ev: EventData) => void;
+  participants: ParticipantsResponse | null;
+  participantsLoading: boolean;
+  participantPage: number;
+  participantTotalPages: number;
+  participantRangeFrom: number;
+  participantRangeTo: number;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+}) {
+  return (
+    <>
+      <div className="admin-stats-grid">
+        <div className="admin-stat-card">
+          <div className="admin-stat-num">{stats?.totalParticipants ?? '—'}</div>
+          <div className="admin-stat-label">Total Participants</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num success">{stats?.totalCompletedImages ?? '—'}</div>
+          <div className="admin-stat-label">Completed Images</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num info">{stats?.totalDownloads ?? '—'}</div>
+          <div className="admin-stat-label">Total Downloads</div>
+        </div>
+      </div>
+
+      <div className="admin-stats-grid">
+        <div className="admin-stat-card">
+          <div className="admin-stat-num">{stats?.totalOtpSent ?? '—'}</div>
+          <div className="admin-stat-label">Total OTP Sent</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num success">{stats?.otpVerified ?? '—'}</div>
+          <div className="admin-stat-label">Successful OTP Verification</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num danger">{stats?.otpFailed ?? '—'}</div>
+          <div className="admin-stat-label">Failed OTP Attempts</div>
+        </div>
+      </div>
+
+      <div className="admin-panel" style={{ marginBottom: '1.25rem' }}>
+        <div className="admin-panel-head">
+          <span className="admin-panel-title">Events</span>
+        </div>
+
+        <form onSubmit={onSubmitNewEvent} style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+          <input
+            className="admin-input"
+            type="text"
+            placeholder="New event name…"
+            value={newEventName}
+            onChange={(e) => onNewEventNameChange(e.target.value)}
+            style={{ flex: 1, minWidth: 180 }}
+          />
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={(e) => onNewEventPdfChange(e.target.files?.[0] || null)}
+            style={{ maxWidth: 220 }}
+          />
+          <button type="submit" className="btn-primary admin-btn-inline" disabled={eventSaving}>
+            {eventSaving ? 'Creating…' : '+ Create Event'}
+          </button>
+        </form>
+
+        {events.length === 0 ? (
+          <div className="admin-empty">No events yet — create one above to start the mobile experience.</div>
+        ) : (
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Active</th>
+                  <th>PDF</th>
+                  <th>Participants</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev) => (
+                  <tr key={ev.id}>
+                    <td>{ev.name}</td>
+                    <td>
+                      <button
+                        className={`admin-toggle-switch ${ev.isActive ? 'on' : ''}`}
+                        onClick={() => onToggleEvent(ev)}
+                        title={ev.isActive ? 'Active — click to deactivate' : 'Inactive — click to activate'}
+                      >
+                        <span className="admin-toggle-knob" />
+                      </button>
+                    </td>
+                    <td>{ev.hasPdf ? '✓' : '—'}</td>
+                    <td>{ev.participantCount}</td>
+                    <td>{new Date(ev.createdAt).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Phone</th>
+              <th>Gender</th>
+              <th>Career</th>
+              <th>Event</th>
+              <th>Status</th>
+              <th>Downloads</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            {participants && participants.data.length > 0 ? (
+              participants.data.map((p: ParticipantRow) => (
+                <tr key={p.id}>
+                  <td>{p.name}</td>
+                  <td style={{ fontFamily: 'monospace' }}>{p.phone}</td>
+                  <td>{p.gender === 'male' ? 'Male' : 'Female'}</td>
+                  <td>{p.career}</td>
+                  <td>{p.eventName}</td>
+                  <td>
+                    <span className={`admin-badge admin-badge-${p.processingStatus}`}>
+                      {STATUS_LABELS[p.processingStatus] || p.processingStatus}
+                    </span>
+                  </td>
+                  <td>{p.downloadCount}</td>
+                  <td>{timeAgo(p.createdAt)}</td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="admin-empty-cell">
+                  {participantsLoading ? 'Loading…' : 'No participants yet'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {participants && participants.total > 0 && (
+        <div className="admin-pagination">
+          <span>
+            Showing {participantRangeFrom}-{participantRangeTo} of {participants.total}
+          </span>
+          <button className="btn-secondary admin-btn-sm" disabled={participantPage <= 1} onClick={onPrevPage}>
+            Prev
+          </button>
+          <span className="admin-page-info">
+            Page {participantPage} of {participantTotalPages}
+          </span>
+          <button className="btn-secondary admin-btn-sm" disabled={participantPage >= participantTotalPages} onClick={onNextPage}>
             Next
           </button>
         </div>

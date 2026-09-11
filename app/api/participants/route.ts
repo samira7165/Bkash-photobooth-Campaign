@@ -1,0 +1,59 @@
+import { NextRequest, NextResponse } from 'next/server';
+import prisma from '@/lib/db';
+import { normalizePhone } from '@/lib/utils';
+
+const VALID_CAREERS = [
+  'Military', 'Painter', 'Scientist', 'Professional Gamer',
+  'Doctor', 'Engineer', 'Pilot', 'Journalist',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer',
+];
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { name, phone, email, gender, career, eventId } = body;
+
+    if (!name?.trim()) {
+      return NextResponse.json({ message: 'Name is required' }, { status: 400 });
+    }
+    if (!phone?.trim()) {
+      return NextResponse.json({ message: 'Phone number is required' }, { status: 400 });
+    }
+    if (!['male', 'female'].includes(gender)) {
+      return NextResponse.json({ message: 'Gender must be male or female' }, { status: 400 });
+    }
+    if (!career || !VALID_CAREERS.includes(career)) {
+      return NextResponse.json({ message: 'A valid career must be selected' }, { status: 400 });
+    }
+    if (!eventId?.trim()) {
+      return NextResponse.json({ message: 'eventId is required' }, { status: 400 });
+    }
+
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event || !event.isActive) {
+      return NextResponse.json({ message: 'This event is not currently active' }, { status: 400 });
+    }
+
+    const participant = await prisma.participant.create({
+      data: {
+        name: name.trim(),
+        phone: normalizePhone(phone.trim()),
+        email: email?.trim() || null,
+        gender,
+        career,
+        eventId,
+      },
+    });
+
+    return NextResponse.json({ participantId: participant.id }, { status: 201 });
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { message: 'You have already participated. Please check your SMS for your image.' },
+        { status: 409 },
+      );
+    }
+    console.error('[API] Create participant error:', error.message);
+    return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
+  }
+}
