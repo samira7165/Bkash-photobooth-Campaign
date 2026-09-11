@@ -7,8 +7,8 @@ export async function brandGeneratedPhoto(photoPath: string | Buffer, logoPath: 
   const logo = await sharp(logoPath)
     .trim()
     .resize({
-      width: Math.max(1, Math.round(info.width * 0.3)),
-      height: Math.max(1, Math.round(info.height * 0.2)),
+      width: Math.max(1, Math.round(info.width * 0.18)),
+      height: Math.max(1, Math.round(info.height * 0.1)),
       fit: 'inside',
     })
     .png()
