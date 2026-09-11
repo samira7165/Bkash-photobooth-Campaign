@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createParticipant } from '@/services/api';
 import { ExperienceInfoData } from './ExperienceInfo';
+import CareerVisual from '@/components/CareerVisual';
 
 const CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
@@ -62,6 +63,7 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
             className={`kiosk-job-tile ${selected === career ? 'selected' : ''}`}
             onClick={() => setSelected(career)}
           >
+            <CareerVisual career={career} />
             <span className="job-tile-label">{career}</span>
             {selected === career && <span className="job-check">✓</span>}
           </button>

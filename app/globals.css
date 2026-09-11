@@ -2289,6 +2289,25 @@ textarea.admin-textarea:focus {
   border: 3px solid #e2e4e9; border-top-color: #e2136e;
   border-radius: 50%; animation: kioskSpin 0.8s linear infinite;
 }
+.career-visual {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.24);
+  box-shadow: inset 0 1px rgba(255,255,255,.2), 0 6px 16px rgba(0,0,0,.12);
+  transition: transform .25s ease, background .25s ease;
+}
+.career-visual img { width: 100%; height: 100%; object-fit: cover; }
+.kiosk-job-tile:hover .career-visual,
+.kiosk-job-tile.selected .career-visual {
+  transform: translateY(-2px) scale(1.08) rotate(-2deg);
+  border-color: rgba(255,255,255,.65);
+}
 
 /* Standalone phone-number download portal */
 .portal-page {

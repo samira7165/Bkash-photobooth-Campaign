@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { selectJob } from '@/services/api';
+import CareerVisual from '@/components/CareerVisual';
 
 const JOBS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
@@ -86,6 +87,7 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
             className={`kiosk-job-tile ${selected === job ? 'selected' : ''}`}
             onClick={() => pick(job)}
           >
+            <CareerVisual career={job} />
             <span className="job-tile-label">
               {job}
             </span>
@@ -103,6 +105,7 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
           className={`kiosk-job-tile ${selected === 'Other' ? 'selected' : ''}`}
           onClick={() => pick('Other')}
         >
+          <CareerVisual career="Other" />
           <span className="job-tile-label">
             Other
           </span>
