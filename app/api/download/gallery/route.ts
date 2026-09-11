@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/db';
+import { getDownloadSubmissions } from '@/lib/download-gallery';
 import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
 
 export const dynamic = 'force-dynamic';
-
-// Booth SessionStatus and mobile ImageProcessingStatus overlap on the
-// meaningful states (queued/processing/generated/sms_sent/failed) — booth
-// adds a few earlier pre-capture states that also just mean "not ready yet".
-function mapSessionStatus(status: string): string {
-  if (['created', 'job_selected', 'image_captured', 'queued'].includes(status)) return 'queued';
-  return status;
-}
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,51 +10,7 @@ export async function GET(req: NextRequest) {
     if (!session) {
       return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
     }
-
-    const [participants, boothSessions] = await Promise.all([
-      prisma.participant.findMany({
-        where: { phone: session.phone },
-        include: { event: true, images: { orderBy: { createdAt: 'desc' } } },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.session.findMany({
-        where: { phone: session.phone },
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
-
-    const mobileSubmissions = participants.flatMap((participant) =>
-      participant.images.map((image) => ({
-        id: image.id,
-        name: participant.name,
-        career: participant.career,
-        label: `${participant.career} — ${participant.event.name}`,
-        originalUrl: image.originalImageUrl ? `/api/download/file/mobile/${image.id}/original` : null,
-        aiUrl: image.aiImageUrl ? `/api/download/file/mobile/${image.id}/ai` : null,
-        comicBookUrl: `/api/download/file/mobile/${image.id}/comic-book`,
-        processingStatus: image.processingStatus,
-        createdAt: image.createdAt,
-      })),
-    );
-
-    const boothSubmissions = boothSessions
-      .filter((s) => s.originalImagePath || s.generatedImagePath)
-      .map((s) => ({
-        id: s.id,
-        name: s.name,
-        career: s.customJob || s.selectedJob || 'Dream Job',
-        label: `${s.customJob || s.selectedJob || 'Dream Job'} — Event Booth`,
-        originalUrl: s.originalImagePath ? `/api/download/file/booth/${s.id}/original` : null,
-        aiUrl: s.generatedImagePath ? `/api/download/file/booth/${s.id}/ai` : null,
-        comicBookUrl: `/api/download/file/booth/${s.id}/comic-book`,
-        processingStatus: mapSessionStatus(s.status),
-        createdAt: s.createdAt,
-      }));
-
-    const submissions = [...mobileSubmissions, ...boothSubmissions].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-
+    const submissions = await getDownloadSubmissions(session.phone);
     if (submissions.length === 0) {
       return NextResponse.json({ message: 'No photos found for this phone number' }, { status: 404 });
     }

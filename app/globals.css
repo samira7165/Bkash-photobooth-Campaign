@@ -2217,6 +2217,7 @@ textarea.admin-textarea:focus {
   display: flex; align-items: center; gap: 1rem;
   padding: 0.85rem; border: 1px solid #e2e4e9; border-radius: 12px;
 }
+.bp-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
 .download-item-preview {
   width: 64px; height: 64px; border-radius: 8px; object-fit: cover;
   background: #f0f1f3; flex-shrink: 0;

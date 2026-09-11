@@ -59,6 +59,21 @@ npm run dev
 
 Open `http://localhost:3000` — that's it, one app, one port.
 
+## BP photo portal
+
+Open `/bp` and sign in using an existing account from Admin → Users. This portal
+uses the same accounts and sessions as the admin dashboard; it does not introduce
+a separate BP permission role. Signing out also signs out of the admin dashboard.
+
+Search using the customer's 11-digit phone number (with or without `+88`) to find
+booth and mobile submissions without a customer OTP. Preview or download the
+framed original, the generated image with the bKash logo, and the career PDF.
+Search again to refresh photos that are still processing.
+
+The BP search and file endpoints validate the staff session on every request.
+The public `/download` portal continues to require customer OTP verification.
+Run `node tests/bp-portal.cjs` for the portal's authorization and download checks.
+
 ## API Endpoints
 
 | Method | Path                                     | Description                |
