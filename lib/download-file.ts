@@ -6,6 +6,7 @@ import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/downl
 import { normalizePhone } from '@/lib/utils';
 import { frameOriginalPhoto } from '@/lib/original-photo-frame';
 import { brandGeneratedPhoto } from '@/lib/generated-photo-logo';
+import { frameGeneratedPhoto } from '@/lib/generated-photo-frame';
 
 
 function sanitize(value: string): string {
@@ -45,6 +46,7 @@ export async function serveDownloadFile(
 
     let filepath: string | null = null;
     let downloadFilenameBase: string;
+    let dreamJob: string;
     let pdfNameForFilename: string | null = null;
     let incrementDownload: () => Promise<void>;
 
@@ -63,6 +65,7 @@ export async function serveDownloadFile(
       else if (type === 'ai') filepath = image.aiImageUrl;
       else filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
       pdfNameForFilename = 'Comic.pdf';
+      dreamJob = image.participant.career;
       downloadFilenameBase = `dream_career_${sanitize(image.participant.name)}_${sanitize(image.participant.career)}`;
       incrementDownload = async () => {
         await prisma.image.update({ where: { id: image.id }, data: { downloadCount: { increment: 1 } } });
@@ -82,6 +85,7 @@ export async function serveDownloadFile(
         pdfNameForFilename = 'Comic.pdf';
       }
       downloadFilenameBase = `dream_job_${sanitize(bSession.name)}_${sanitize(bSession.customJob || bSession.selectedJob || 'job')}`;
+      dreamJob = bSession.customJob || bSession.selectedJob || '';
       incrementDownload = async () => {
         await prisma.session.update({ where: { id: bSession.id }, data: { downloadCount: { increment: 1 } } });
       };
@@ -94,7 +98,7 @@ export async function serveDownloadFile(
     const buffer = type === 'original'
       ? await frameOriginalPhoto(filepath)
       : type === 'ai'
-        ? await brandGeneratedPhoto(filepath, path.join(process.cwd(), 'public', 'logos', 'Logo.png'))
+        ? await brandGeneratedPhoto(await frameGeneratedPhoto(filepath, dreamJob), path.join(process.cwd(), 'public', 'logos', 'Logo.png'))
         : fs.readFileSync(filepath);
     const ext = type === 'original' || type === 'ai' ? '.jpg' : path.extname(filepath).toLowerCase();
     const contentType = MIME_MAP[ext] || 'application/octet-stream';

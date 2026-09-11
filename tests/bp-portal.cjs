@@ -33,6 +33,10 @@ const mocks = {
   },
   '@/lib/original-photo-frame': { frameOriginalPhoto: async () => Buffer.from('framed-original') },
   '@/lib/generated-photo-logo': { brandGeneratedPhoto: async () => Buffer.from('branded-ai') },
+  '@/lib/generated-photo-frame': { frameGeneratedPhoto: async (_photo, job) => {
+    assert.equal(job, 'Doctor', 'Use the dream job from the booth or mobile record');
+    return Buffer.from('career-frame');
+  } },
 };
 const cache = new Map();
 function load(filename) {

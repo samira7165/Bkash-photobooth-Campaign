@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 
-export async function brandGeneratedPhoto(photoPath: string, logoPath: string): Promise<Buffer> {
+export async function brandGeneratedPhoto(photoPath: string | Buffer, logoPath: string): Promise<Buffer> {
   const { data: photo, info } = await sharp(photoPath)
     .rotate()
     .toBuffer({ resolveWithObject: true });
