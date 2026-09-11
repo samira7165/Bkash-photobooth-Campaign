@@ -39,15 +39,11 @@ export async function GET(req: NextRequest) {
         label: `${participant.career} — ${participant.event.name}`,
         originalUrl: image.originalImageUrl ? `/api/download/file/mobile/${image.id}/original` : null,
         aiUrl: image.aiImageUrl ? `/api/download/file/mobile/${image.id}/ai` : null,
-        comicBookUrl: participant.event.pdfPath ? `/api/download/file/mobile/${image.id}/comic-book` : null,
+        comicBookUrl: `/api/download/file/mobile/${image.id}/comic-book`,
         processingStatus: image.processingStatus,
         createdAt: image.createdAt,
       })),
     );
-
-    const activeEvent = boothSessions.length > 0
-      ? await prisma.event.findFirst({ where: { isActive: true } })
-      : null;
 
     const boothSubmissions = boothSessions
       .filter((s) => s.originalImagePath || s.generatedImagePath)
@@ -58,7 +54,7 @@ export async function GET(req: NextRequest) {
         label: `${s.customJob || s.selectedJob || 'Dream Job'} — Event Booth`,
         originalUrl: s.originalImagePath ? `/api/download/file/booth/${s.id}/original` : null,
         aiUrl: s.generatedImagePath ? `/api/download/file/booth/${s.id}/ai` : null,
-        comicBookUrl: activeEvent?.pdfPath ? `/api/download/file/booth/${s.id}/comic-book` : null,
+        comicBookUrl: `/api/download/file/booth/${s.id}/comic-book`,
         processingStatus: mapSessionStatus(s.status),
         createdAt: s.createdAt,
       }));

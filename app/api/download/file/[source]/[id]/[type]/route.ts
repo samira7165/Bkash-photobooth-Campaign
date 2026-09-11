@@ -59,8 +59,8 @@ export async function GET(
       }
       if (type === 'original') filepath = image.originalImageUrl;
       else if (type === 'ai') filepath = image.aiImageUrl;
-      else filepath = image.participant.event.pdfPath;
-      pdfNameForFilename = image.participant.event.pdfName;
+      else filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
+      pdfNameForFilename = 'Comic.pdf';
       downloadFilenameBase = `dream_career_${sanitize(image.participant.name)}_${sanitize(image.participant.career)}`;
       incrementDownload = async () => {
         await prisma.image.update({ where: { id: image.id }, data: { downloadCount: { increment: 1 } } });
@@ -76,9 +76,8 @@ export async function GET(
       if (type === 'original') filepath = bSession.originalImagePath;
       else if (type === 'ai') filepath = bSession.generatedImagePath;
       else {
-        const activeEvent = await prisma.event.findFirst({ where: { isActive: true } });
-        filepath = activeEvent?.pdfPath || null;
-        pdfNameForFilename = activeEvent?.pdfName || null;
+        filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
+        pdfNameForFilename = 'Comic.pdf';
       }
       downloadFilenameBase = `dream_job_${sanitize(bSession.name)}_${sanitize(bSession.customJob || bSession.selectedJob || 'job')}`;
       incrementDownload = async () => {
