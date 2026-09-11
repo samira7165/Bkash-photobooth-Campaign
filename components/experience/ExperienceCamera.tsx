@@ -143,7 +143,7 @@ export default function ExperienceCamera({ participantId, careerLabel, onComplet
         {previewUrl ? (
           <img src={previewUrl} alt="Captured preview" className="cam-feed" />
         ) : (
-          <Webcam ref={webcamRef} audio={false}
+          <Webcam ref={webcamRef} audio={false} mirrored
             videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
             className="cam-feed" />
         )}

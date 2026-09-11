@@ -63,15 +63,15 @@ type Section =
   | 'queue'
   | 'users';
 
-const NAV_ITEMS: { id: Section; icon: string; label: string }[] = [
-  { id: 'dashboard', icon: '📊', label: 'Dashboard' },
-  { id: 'analytics', icon: '📈', label: 'Analytics' },
-  { id: 'providers', icon: '🤖', label: 'AI Providers' },
-  { id: 'prompts', icon: '🎯', label: 'Prompts' },
-  { id: 'submissions', icon: '📨', label: 'Submissions' },
-  { id: 'participants', icon: '🎓', label: 'Mobile Experience' },
-  { id: 'queue', icon: '⚡', label: 'Queue Monitor' },
-  { id: 'users', icon: '👥', label: 'Users' },
+const NAV_ITEMS: { id: Section; label: string }[] = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'analytics', label: 'Analytics' },
+  { id: 'providers', label: 'AI Providers' },
+  { id: 'prompts', label: 'Prompts' },
+  { id: 'submissions', label: 'Submissions' },
+  { id: 'participants', label: 'Mobile Experience' },
+  { id: 'queue', label: 'Queue Monitor' },
+  { id: 'users', label: 'Users' },
 ];
 
 const SECTION_TITLES: Record<Section, string> = {
@@ -942,7 +942,6 @@ export default function AdminPage() {
 
       <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
         <div className="admin-sidebar-logo">
-          <span className="admin-logo-icon">📷</span>
           <span className="admin-logo-text">Photobooth Admin</span>
         </div>
         <nav className="admin-sidebar-nav">
@@ -955,7 +954,6 @@ export default function AdminPage() {
                 setSidebarOpen(false);
               }}
             >
-              <span className="admin-nav-icon">{item.icon}</span>
               <span className="admin-nav-label">{item.label}</span>
             </button>
           ))}
@@ -972,7 +970,7 @@ export default function AdminPage() {
         <div className="admin-content-topbar">
           <div className="admin-content-topbar-left">
             <button className="admin-hamburger" onClick={() => setSidebarOpen(true)}>
-              ☰
+              Menu
             </button>
             <h1 className="admin-section-title">{SECTION_TITLES[section]}</h1>
           </div>
@@ -995,16 +993,13 @@ export default function AdminPage() {
                     </option>
                   ))}
                 </select>
-                <div className="admin-search-wrap">
-                  <span className="admin-search-icon">🔍</span>
-                  <input
-                    className="admin-input"
-                    type="text"
-                    placeholder="Search phone…"
-                    value={searchPhone}
-                    onChange={(e) => setSearchPhone(e.target.value)}
-                  />
-                </div>
+                <input
+                  className="admin-input admin-search-input"
+                  type="text"
+                  placeholder="Search phone…"
+                  value={searchPhone}
+                  onChange={(e) => setSearchPhone(e.target.value)}
+                />
               </>
             )}
             {section === 'participants' && (
@@ -1038,16 +1033,13 @@ export default function AdminPage() {
                     <option key={job} value={job}>{job}</option>
                   ))}
                 </select>
-                <div className="admin-search-wrap">
-                  <span className="admin-search-icon">🔍</span>
-                  <input
-                    className="admin-input"
-                    type="text"
-                    placeholder="Search phone…"
-                    value={participantSearch}
-                    onChange={(e) => setParticipantSearch(e.target.value)}
-                  />
-                </div>
+                <input
+                  className="admin-input admin-search-input"
+                  type="text"
+                  placeholder="Search phone…"
+                  value={participantSearch}
+                  onChange={(e) => setParticipantSearch(e.target.value)}
+                />
               </>
             )}
             {section === 'users' && (
@@ -2105,6 +2097,7 @@ function SubmissionsSection({
               <th>Phone</th>
               <th>Gender</th>
               <th>Dream Job</th>
+              <th>College</th>
               <th>Status</th>
               <th>Original</th>
               <th>Generated</th>
@@ -2127,8 +2120,9 @@ function SubmissionsSection({
                   <td>{(submissions.page - 1) * submissions.limit + i + 1}</td>
                   <td>{s.name}</td>
                   <td style={{ fontFamily: 'monospace' }}>{s.phone}</td>
-                  <td>{s.gender === 'male' ? '👨' : '👩'}</td>
+                  <td>{s.gender === 'male' ? 'Male' : 'Female'}</td>
                   <td>{s.customJob || s.selectedJob || '—'}</td>
+                  <td>{s.college || '—'}</td>
                   <td>
                     <span className={`admin-badge admin-badge-${s.status}`}>
                       {STATUS_LABELS[s.status] || s.status}
@@ -2198,7 +2192,7 @@ function SubmissionsSection({
                         ↓↓
                       </button>
                       <button className="admin-delete-btn" onClick={() => onDeleteOne(s.id)} title="Delete submission">
-                        🗑️
+                        Delete
                       </button>
                     </div>
                   </td>
@@ -2206,7 +2200,7 @@ function SubmissionsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={11} className="admin-empty-cell">
+                <td colSpan={12} className="admin-empty-cell">
                   {loading ? 'Loading…' : 'No submissions yet'}
                 </td>
               </tr>
@@ -2375,6 +2369,7 @@ function ParticipantsSection({
               <th>Phone</th>
               <th>Gender</th>
               <th>Career</th>
+              <th>College</th>
               <th>Event</th>
               <th>Status</th>
               <th>Downloads</th>
@@ -2389,6 +2384,7 @@ function ParticipantsSection({
                   <td style={{ fontFamily: 'monospace' }}>{p.phone}</td>
                   <td>{p.gender === 'male' ? 'Male' : 'Female'}</td>
                   <td>{p.career}</td>
+                  <td>{p.college || '—'}</td>
                   <td>{p.eventName}</td>
                   <td>
                     <span className={`admin-badge admin-badge-${p.processingStatus}`}>
@@ -2401,7 +2397,7 @@ function ParticipantsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={8} className="admin-empty-cell">
+                <td colSpan={9} className="admin-empty-cell">
                   {participantsLoading ? 'Loading…' : 'No participants yet'}
                 </td>
               </tr>

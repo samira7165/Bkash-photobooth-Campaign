@@ -143,7 +143,7 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
         {previewUrl ? (
           <img src={previewUrl} alt="Captured preview" className="cam-feed" />
         ) : (
-          <Webcam ref={webcamRef} audio={false}
+          <Webcam ref={webcamRef} audio={false} mirrored
             videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
             className="cam-feed" />
         )}

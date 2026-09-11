@@ -3,7 +3,6 @@ import prisma from '@/lib/db';
 import { startWorker } from '@/lib/queue';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(
@@ -39,14 +38,10 @@ export async function POST(
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(filepath, buffer);
 
-    const ttlDays = parseInt(process.env.DOWNLOAD_TOKEN_TTL_DAYS || '30', 10);
-
     const image = await prisma.image.create({
       data: {
         participantId: params.id,
         originalImageUrl: filepath,
-        downloadToken: crypto.randomBytes(32).toString('hex'),
-        tokenExpiresAt: new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000),
         processingStatus: 'queued',
       },
     });

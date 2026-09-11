@@ -544,17 +544,6 @@ body {
   padding: 1.1rem 1rem;
   border-bottom: 1px solid var(--border);
 }
-.admin-logo-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
 .admin-logo-text {
   font-weight: 700;
   font-size: 0.95rem;
@@ -595,13 +584,6 @@ body {
   background: var(--accent);
   color: #fff;
 }
-.admin-nav-icon {
-  font-size: 1.05rem;
-  line-height: 1;
-  flex-shrink: 0;
-  width: 1.2rem;
-  text-align: center;
-}
 .admin-nav-label {
   white-space: nowrap;
   overflow: hidden;
@@ -640,15 +622,17 @@ body {
 
 .admin-hamburger {
   display: none;
-  width: 36px;
   height: 36px;
+  padding: 0 0.9rem;
   align-items: center;
   justify-content: center;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 1.1rem;
+  font-family: var(--font);
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
   flex-shrink: 0;
 }
@@ -715,21 +699,8 @@ body {
 .admin-input:focus {
   border-color: var(--accent);
 }
-.admin-search-wrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.admin-search-wrap .admin-input {
-  padding-left: 2rem;
+.admin-search-input {
   width: 190px;
-}
-.admin-search-icon {
-  position: absolute;
-  left: 0.65rem;
-  color: var(--text-dim);
-  font-size: 0.8rem;
-  pointer-events: none;
 }
 
 .admin-btn-inline {
@@ -1006,14 +977,15 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
+  padding: 0.35rem 0.7rem;
   background: none;
   border: 1px solid transparent;
   border-radius: 6px;
   color: var(--danger);
-  font-size: 0.85rem;
-  line-height: 1;
+  font-family: var(--font);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -1801,40 +1773,9 @@ textarea.admin-textarea:focus {
 }
 
 @media (max-width: 768px) {
-  .admin-sidebar {
-    width: 64px;
-  }
-  .admin-logo-text,
-  .admin-nav-label,
-  .admin-sidebar-user {
-    display: none;
-  }
-  .admin-nav-item {
-    justify-content: center;
-  }
-  .admin-sidebar-logo {
-    justify-content: center;
-  }
-  .admin-sidebar-footer {
-    align-items: center;
-  }
-  .admin-sidebar-logout {
-    padding: 0.5rem;
-    font-size: 1rem;
-  }
-  .admin-main {
-    padding: 1.25rem 1rem 3rem;
-  }
-  .admin-stats-grid,
-  .admin-stats-grid-5 {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .admin-bulk-bar {
-    left: 64px;
-  }
-}
-
-@media (max-width: 480px) {
+  /* No icon-only collapsed rail (icons removed site-wide) — the sidebar is
+     either full-width-with-text-labels (open) or hidden behind the
+     hamburger toggle, same overlay pattern used at the 480px breakpoint. */
   .admin-hamburger {
     display: flex;
   }
@@ -1851,14 +1792,19 @@ textarea.admin-textarea:focus {
   .admin-sidebar.open {
     transform: translateX(0);
   }
-  .admin-sidebar.open .admin-logo-text,
-  .admin-sidebar.open .admin-nav-label,
-  .admin-sidebar.open .admin-sidebar-user {
-    display: inline;
+  .admin-main {
+    padding: 1.25rem 1rem 3rem;
   }
-  .admin-sidebar.open .admin-nav-item {
-    justify-content: flex-start;
+  .admin-stats-grid,
+  .admin-stats-grid-5 {
+    grid-template-columns: repeat(2, 1fr);
   }
+  .admin-bulk-bar {
+    left: 0;
+  }
+}
+
+@media (max-width: 480px) {
   .admin-sidebar-overlay {
     display: block;
     position: fixed;
@@ -2006,10 +1952,8 @@ textarea.admin-textarea:focus {
 .kiosk-field .req { color: #FFD700; }
 .kiosk-field .opt { color: rgba(255,255,255,0.45); font-weight: 400; }
 
-.input-wrap { position: relative; display: flex; align-items: center; }
-.input-icon { position: absolute; left: 14px; font-size: 1rem; opacity: 0.5; pointer-events: none; }
 .kiosk-field input {
-  width: 100%; padding: 0.8rem 0.9rem 0.8rem 2.6rem;
+  width: 100%; padding: 0.8rem 0.9rem;
   background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18);
   border-radius: 12px; color: #fff; font-family: inherit; font-size: 0.95rem;
   outline: none; transition: all .25s;
@@ -2023,7 +1967,6 @@ textarea.admin-textarea:focus {
 .field-err { color: #FFD700; font-size: 0.8rem; margin-top: 0.3rem; display: block; text-shadow: 0 1px 3px rgba(0,0,0,0.3); }
 
 /* Icon-less field variant — used by the no-emoji mobile experience pages */
-.kiosk-field.no-icon input { padding-left: 0.9rem; }
 
 /* ── Loading spinner (mobile experience processing screen) ── */
 .kiosk-spinner-lg {
@@ -2141,13 +2084,11 @@ textarea.admin-textarea:focus {
 
 /* ── Done Screen ── */
 .kiosk-done { text-align: center; }
-.done-party { font-size: 3.5rem; margin-bottom: 0.75rem; }
 .sms-box {
   display: flex; align-items: flex-start; gap: 0.75rem;
   padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.08); margin: 1.2rem 0; text-align: left;
 }
-.sms-box-icon { font-size: 1.5rem; flex-shrink: 0; }
 .sms-box p { font-size: 0.88rem; color: rgba(255,255,255,0.75); line-height: 1.5; }
 
 /* ── Fade-in Animation ── */
@@ -2277,4 +2218,7 @@ textarea.admin-textarea:focus {
   border: 3px solid #e2e4e9; border-top-color: #e2136e;
   border-radius: 50%; animation: kioskSpin 0.8s linear infinite;
 }
+
+.download-submission + .download-submission { margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e4e9; }
+.download-submission-heading { font-size: 0.85rem; font-weight: 700; color: #5b606b; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 0.9rem; }
 

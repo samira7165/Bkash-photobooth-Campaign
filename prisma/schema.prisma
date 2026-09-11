@@ -28,6 +28,7 @@ model Session {
   name               String        @db.VarChar(100)
   phone              String        @db.VarChar(20)
   email              String?       @db.VarChar(150)
+  college            String?       @db.VarChar(200)
   gender             Gender
   selectedJob        String?       @db.VarChar(100)
   customJob          String?       @db.VarChar(200)
@@ -179,6 +180,7 @@ model Participant {
   name      String            @db.VarChar(100)
   phone     String            @db.VarChar(20)
   email     String?           @db.VarChar(150)
+  college   String?           @db.VarChar(200)
   gender    ParticipantGender
   career    String            @db.VarChar(100)
   eventId   String
@@ -199,8 +201,6 @@ model Image {
   originalImageUrl String?                @db.VarChar(500)
   aiImageUrl       String?                @db.VarChar(500)
   comicImageUrl    String?                @db.VarChar(500)
-  downloadToken    String                 @unique @db.VarChar(64)
-  tokenExpiresAt   DateTime
   processingStatus ImageProcessingStatus  @default(queued)
   downloadCount    Int                    @default(0)
   errorMessage     String?                @db.Text
@@ -211,7 +211,6 @@ model Image {
   participant Participant @relation(fields: [participantId], references: [id])
 
   @@index([participantId])
-  @@index([downloadToken])
   @@index([processingStatus])
   @@map("images")
 }

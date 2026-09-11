@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         phone: p.phone,
         gender: p.gender,
         career: p.career,
+        college: p.college,
         eventName: p.event.name,
         processingStatus: p.images[0]?.processingStatus || 'queued',
         downloadCount: p.images[0]?.downloadCount || 0,

@@ -30,6 +30,7 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
         name: info.name.trim(),
         phone: info.phone.trim(),
         email: info.email.trim() || undefined,
+        college: info.college.trim() || undefined,
         gender: info.gender,
         career: selected,
         eventId,

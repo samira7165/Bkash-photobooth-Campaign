@@ -16,14 +16,12 @@ export default function StepDone({ jobLabel, phone, onRestart }: Props) {
         <span className="step-dot done">✓</span>
       </div>
 
-      <div className="done-party">🎉</div>
       <h2 className="kiosk-title">You&apos;re all set!</h2>
       <p className="kiosk-sub">
         Your AI-generated <strong>{jobLabel}</strong> photo is being created right now.
       </p>
 
       <div className="sms-box">
-        <span className="sms-box-icon">📱</span>
         <p>You&apos;ll receive an SMS at <strong>{phone}</strong> with a link to view and download your image.</p>
       </div>
 

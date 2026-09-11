@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import * as fs from 'fs';
 import * as path from 'path';
 import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
+import { normalizePhone } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,7 +43,7 @@ export async function GET(
     }
 
     const session = verifyDownloadSessionToken(req.cookies.get(DOWNLOAD_SESSION_COOKIE)?.value);
-    if (!session || session.participantId !== image.participantId) {
+    if (!session || session.phone !== normalizePhone(image.participant.phone)) {
       return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
     }
 

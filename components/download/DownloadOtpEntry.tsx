@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { requestDownloadOtp, verifyDownloadOtp } from '@/services/api';
 
 interface Props {
-  token: string;
   phone: string;
   onComplete: () => void;
 }
 
-export default function DownloadOtpEntry({ token, phone, onComplete }: Props) {
+export default function DownloadOtpEntry({ phone, onComplete }: Props) {
   const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,7 +23,7 @@ export default function DownloadOtpEntry({ token, phone, onComplete }: Props) {
     setLoading(true);
     setError('');
     try {
-      await verifyDownloadOtp(token, phone, otp.trim());
+      await verifyDownloadOtp(phone, otp.trim());
       onComplete();
     } catch (err: any) {
       setError(err.message);
@@ -37,7 +36,7 @@ export default function DownloadOtpEntry({ token, phone, onComplete }: Props) {
     setResending(true);
     setError('');
     try {
-      await requestDownloadOtp(token, phone);
+      await requestDownloadOtp(phone);
       setResent(true);
     } catch (err: any) {
       setError(err.message);

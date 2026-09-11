@@ -1,11 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getDownloadGallery, DownloadGallery as DownloadGalleryData } from '@/services/api';
-
-interface Props {
-  token: string;
-}
+import { getDownloadGallery, DownloadSubmission } from '@/services/api';
 
 function triggerDownload(url: string) {
   const a = document.createElement('a');
@@ -16,21 +12,12 @@ function triggerDownload(url: string) {
   document.body.removeChild(a);
 }
 
-export default function DownloadGallery({ token }: Props) {
-  const [data, setData] = useState<DownloadGalleryData | null>(null);
-  const [error, setError] = useState('');
+function SubmissionCard({ submission }: { submission: DownloadSubmission }) {
   const [downloadingAll, setDownloadingAll] = useState(false);
 
-  useEffect(() => {
-    getDownloadGallery(token)
-      .then(setData)
-      .catch((err) => setError(err.message));
-  }, [token]);
-
   const downloadAll = async () => {
-    if (!data) return;
+    const urls = [submission.originalUrl, submission.aiUrl, submission.comicUrl, submission.pdfUrl].filter(Boolean) as string[];
     setDownloadingAll(true);
-    const urls = [data.originalUrl, data.aiUrl, data.comicUrl, data.pdfUrl].filter(Boolean) as string[];
     for (const url of urls) {
       triggerDownload(`${url}?download=1`);
       await new Promise((r) => setTimeout(r, 400));
@@ -38,54 +25,34 @@ export default function DownloadGallery({ token }: Props) {
     setDownloadingAll(false);
   };
 
-  if (error) {
+  if (submission.processingStatus === 'queued' || submission.processingStatus === 'processing') {
     return (
-      <div className="download-card">
-        <h2 className="download-title">Something went wrong</h2>
-        <p className="download-sub">{error}</p>
-      </div>
-    );
-  }
-
-  if (!data) {
-    return (
-      <div className="download-card">
+      <div className="download-item-group">
+        <h3 className="download-title">Still preparing your image</h3>
+        <p className="download-sub">Your {submission.career} image isn&apos;t quite ready yet. Please check back in a minute.</p>
         <div className="download-spinner" />
       </div>
     );
   }
 
-  if (data.processingStatus === 'queued' || data.processingStatus === 'processing') {
+  if (submission.processingStatus === 'failed') {
     return (
-      <div className="download-card">
-        <h2 className="download-title">Still preparing your image</h2>
-        <p className="download-sub">Your dream career image isn&apos;t quite ready yet. Please check back in a minute.</p>
-        <div className="download-spinner" />
-      </div>
-    );
-  }
-
-  if (data.processingStatus === 'failed') {
-    return (
-      <div className="download-card">
-        <h2 className="download-title">We couldn&apos;t create your image</h2>
-        <p className="download-sub">Something went wrong while generating your photo. Please contact the event organizer.</p>
+      <div className="download-item-group">
+        <h3 className="download-title">We couldn&apos;t create your image</h3>
+        <p className="download-sub">Something went wrong while generating your {submission.career} photo. Please contact the event organizer.</p>
       </div>
     );
   }
 
   const items = [
-    { key: 'original', label: 'Original Photo', url: data.originalUrl },
-    { key: 'ai', label: 'Dream Career Image', url: data.aiUrl },
-    { key: 'comic', label: 'Comic Image', url: data.comicUrl },
-    { key: 'pdf', label: 'Event PDF', url: data.pdfUrl },
+    { key: 'original', label: 'Original Photo', url: submission.originalUrl },
+    { key: 'ai', label: 'Dream Career Image', url: submission.aiUrl },
+    { key: 'comic', label: 'Comic Image', url: submission.comicUrl },
+    { key: 'pdf', label: 'Event PDF', url: submission.pdfUrl },
   ].filter((item) => item.url);
 
   return (
-    <div className="download-card wide">
-      <h2 className="download-title">Your images are ready</h2>
-      <p className="download-sub">Preview and download each item below, or download everything at once.</p>
-
+    <div className="download-item-group">
       <div className="download-gallery-grid">
         {items.map((item) => (
           <div className="download-item" key={item.key}>
@@ -105,6 +72,50 @@ export default function DownloadGallery({ token }: Props) {
       <button className="download-btn-primary" onClick={downloadAll} disabled={downloadingAll}>
         {downloadingAll ? 'Downloading…' : 'Download All'}
       </button>
+    </div>
+  );
+}
+
+export default function DownloadGallery() {
+  const [submissions, setSubmissions] = useState<DownloadSubmission[] | null>(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getDownloadGallery()
+      .then((res) => setSubmissions(res.submissions))
+      .catch((err) => setError(err.message));
+  }, []);
+
+  if (error) {
+    return (
+      <div className="download-card">
+        <h2 className="download-title">Something went wrong</h2>
+        <p className="download-sub">{error}</p>
+      </div>
+    );
+  }
+
+  if (!submissions) {
+    return (
+      <div className="download-card">
+        <div className="download-spinner" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="download-card wide">
+      <h2 className="download-title">Your images are ready</h2>
+      <p className="download-sub">Preview and download each item below, or download everything at once.</p>
+
+      {submissions.map((submission) => (
+        <div key={submission.imageId} className="download-submission">
+          {submissions.length > 1 && (
+            <p className="download-submission-heading">{submission.eventName} — {submission.career}</p>
+          )}
+          <SubmissionCard submission={submission} />
+        </div>
+      ))}
     </div>
   );
 }

@@ -6,6 +6,7 @@ export interface ExperienceInfoData {
   name: string;
   phone: string;
   email: string;
+  college: string;
   gender: string;
 }
 
@@ -17,7 +18,7 @@ interface Props {
 const PHONE_RE = /^[0-9+\-\s()]{7,20}$/;
 
 export default function ExperienceInfo({ onComplete }: Props) {
-  const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', gender: '' });
+  const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', college: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const handleSubmit = () => {
@@ -47,25 +48,31 @@ export default function ExperienceInfo({ onComplete }: Props) {
       <h2 className="kiosk-title">Tell us about yourself</h2>
       <p className="kiosk-sub">A few details before you get started</p>
 
-      <div className="kiosk-field no-icon">
+      <div className="kiosk-field">
         <label>Full Name <span className="req">*</span></label>
         <input type="text" placeholder="Your full name" value={info.name}
           onChange={(e) => setInfo({ ...info, name: e.target.value })} />
         {errors.name && <span className="field-err">{errors.name}</span>}
       </div>
 
-      <div className="kiosk-field no-icon">
+      <div className="kiosk-field">
         <label>Mobile Number <span className="req">*</span></label>
         <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
           onChange={(e) => setInfo({ ...info, phone: e.target.value })} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
       </div>
 
-      <div className="kiosk-field no-icon">
+      <div className="kiosk-field">
         <label>Email <span className="opt">(optional)</span></label>
         <input type="email" placeholder="you@example.com" value={info.email}
           onChange={(e) => setInfo({ ...info, email: e.target.value })} />
         {errors.email && <span className="field-err">{errors.email}</span>}
+      </div>
+
+      <div className="kiosk-field">
+        <label>Which college do you want to get admitted to? <span className="opt">(optional)</span></label>
+        <input type="text" placeholder="Your dream college" value={info.college}
+          onChange={(e) => setInfo({ ...info, college: e.target.value })} />
       </div>
 
       <div className="kiosk-field">

@@ -3,34 +3,28 @@ import prisma from '@/lib/db';
 import { normalizePhone } from '@/lib/utils';
 import { sendOtp } from '@/lib/sms';
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: { token: string } },
-) {
+export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
     if (!phone?.trim()) {
       return NextResponse.json({ message: 'Phone number is required' }, { status: 400 });
     }
 
-    const image = await prisma.image.findUnique({
-      where: { downloadToken: params.token },
-      include: { participant: true },
+    const normalizedPhone = normalizePhone(phone.trim());
+
+    const participant = await prisma.participant.findFirst({
+      where: { phone: normalizedPhone },
     });
 
-    if (!image || image.tokenExpiresAt < new Date()) {
-      return NextResponse.json({ message: 'This download link is invalid or has expired' }, { status: 404 });
-    }
-
-    if (normalizePhone(phone.trim()) !== normalizePhone(image.participant.phone)) {
+    if (!participant) {
       return NextResponse.json(
-        { message: 'That phone number does not match this download link' },
-        { status: 403 },
+        { message: 'No photos found for this phone number. Please check the number and try again.' },
+        { status: 404 },
       );
     }
 
     try {
-      await sendOtp(image.participant.phone);
+      await sendOtp(normalizedPhone);
     } catch (smsErr: any) {
       console.error('[API] Failed to send download OTP SMS:', smsErr.message);
       return NextResponse.json(

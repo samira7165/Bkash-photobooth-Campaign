@@ -7,7 +7,7 @@ import DownloadGallery from '@/components/download/DownloadGallery';
 
 type Step = 'phone' | 'otp' | 'gallery';
 
-export default function DownloadTokenPage({ params }: { params: { token: string } }) {
+export default function DownloadPage() {
   const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState('');
 
@@ -15,18 +15,16 @@ export default function DownloadTokenPage({ params }: { params: { token: string 
     <div className="download-page">
       {step === 'phone' && (
         <DownloadPhoneEntry
-          token={params.token}
           onComplete={(p) => { setPhone(p); setStep('otp'); }}
         />
       )}
       {step === 'otp' && (
         <DownloadOtpEntry
-          token={params.token}
           phone={phone}
           onComplete={() => setStep('gallery')}
         />
       )}
-      {step === 'gallery' && <DownloadGallery token={params.token} />}
+      {step === 'gallery' && <DownloadGallery />}
     </div>
   );
 }

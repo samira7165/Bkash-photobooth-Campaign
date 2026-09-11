@@ -47,8 +47,8 @@ export async function processNextParticipantJob() {
         data: { aiImageUrl, processingStatus: 'generated' },
       });
 
-      const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download/${image.downloadToken}`;
-      const message = `Hi ${participant.name}, Your Dream Career image is ready. View and download: ${downloadLink}`;
+      const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
+      const message = `Hi ${participant.name}, Your Dream Career image is ready. Visit ${downloadLink} and enter your phone number to view and download your image.`;
 
       try {
         await sendXriSms(participant.phone, message);

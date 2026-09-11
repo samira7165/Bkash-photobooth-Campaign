@@ -9,7 +9,7 @@ const SESSION_TTL_MS = 45 * 60 * 1000; // 45 minutes
 export const DOWNLOAD_SESSION_COOKIE = 'dl_session';
 
 interface DownloadSessionPayload {
-  participantId: string;
+  phone: string;
   exp: number;
 }
 
@@ -25,9 +25,9 @@ function sign(payloadB64: string): string {
   return crypto.createHmac('sha256', getSecret()).update(payloadB64).digest('hex');
 }
 
-export function createDownloadSessionToken(participantId: string): string {
+export function createDownloadSessionToken(phone: string): string {
   const payload: DownloadSessionPayload = {
-    participantId,
+    phone,
     exp: Date.now() + SESSION_TTL_MS,
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');

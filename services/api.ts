@@ -3,6 +3,7 @@ export interface SessionData {
   name: string;
   phone: string;
   email?: string;
+  college?: string;
   gender: string;
   selectedJob?: string;
   customJob?: string;
@@ -13,6 +14,7 @@ export async function createSession(data: {
   name: string;
   phone: string;
   email?: string;
+  college?: string;
   gender: string;
 }): Promise<SessionData> {
   const res = await fetch('/api/sessions', {
@@ -79,6 +81,7 @@ export async function createParticipant(data: {
   name: string;
   phone: string;
   email?: string;
+  college?: string;
   gender: string;
   career: string;
   eventId: string;
@@ -114,15 +117,10 @@ export async function getParticipantStatus(participantId: string): Promise<Parti
   return handle(res);
 }
 
-// ─── Download Portal (Journey 2) ───
+// ─── Download Portal (Journey 2) — phone-number lookup, no link tokens ───
 
-export async function resolveDownloadToken(token: string): Promise<{ valid: boolean }> {
-  const res = await fetch(`/api/download/${token}/resolve`);
-  return handle(res);
-}
-
-export async function requestDownloadOtp(token: string, phone: string): Promise<void> {
-  const res = await fetch(`/api/download/${token}/request-otp`, {
+export async function requestDownloadOtp(phone: string): Promise<void> {
+  const res = await fetch(`/api/download/request-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone }),
@@ -130,8 +128,8 @@ export async function requestDownloadOtp(token: string, phone: string): Promise<
   await handle(res);
 }
 
-export async function verifyDownloadOtp(token: string, phone: string, otp: string): Promise<void> {
-  const res = await fetch(`/api/download/${token}/verify-otp`, {
+export async function verifyDownloadOtp(phone: string, otp: string): Promise<void> {
+  const res = await fetch(`/api/download/verify-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ phone, otp }),
@@ -139,16 +137,20 @@ export async function verifyDownloadOtp(token: string, phone: string, otp: strin
   await handle(res);
 }
 
-export interface DownloadGallery {
+export interface DownloadSubmission {
+  imageId: string;
+  eventName: string;
+  career: string;
   originalUrl: string | null;
   aiUrl: string | null;
   comicUrl: string | null;
   pdfUrl: string | null;
   processingStatus: string;
+  createdAt: string;
 }
 
-export async function getDownloadGallery(token: string): Promise<DownloadGallery> {
-  const res = await fetch(`/api/download/${token}/gallery`, { credentials: 'include' });
+export async function getDownloadGallery(): Promise<{ submissions: DownloadSubmission[] }> {
+  const res = await fetch(`/api/download/gallery`, { credentials: 'include' });
   return handle(res);
 }
 
@@ -197,6 +199,7 @@ export interface ParticipantRow {
   phone: string;
   gender: string;
   career: string;
+  college?: string | null;
   eventName: string;
   processingStatus: string;
   downloadCount: number;
@@ -251,6 +254,7 @@ export interface Submission {
   name: string;
   phone: string;
   email?: string | null;
+  college?: string | null;
   gender: string;
   selectedJob?: string | null;
   customJob?: string | null;

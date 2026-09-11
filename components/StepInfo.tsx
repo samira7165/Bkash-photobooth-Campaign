@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { createSession } from '@/services/api';
 
 interface Props {
-  onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; gender: string }) => void;
+  onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; college: string; gender: string }) => void;
 }
 
 export default function StepInfo({ onComplete }: Props) {
-  const [info, setInfo] = useState({ name: '', phone: '', email: '', gender: '' });
+  const [info, setInfo] = useState({ name: '', phone: '', email: '', college: '', gender: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -27,6 +27,7 @@ export default function StepInfo({ onComplete }: Props) {
         name: info.name.trim(),
         phone: info.phone.trim(),
         email: info.email.trim() || undefined,
+        college: info.college.trim() || undefined,
         gender: info.gender,
       });
       setErrors({});
@@ -55,32 +56,29 @@ export default function StepInfo({ onComplete }: Props) {
 
       <div className="kiosk-field">
         <label>Name <span className="req">*</span></label>
-        <div className="input-wrap">
-          <span className="input-icon">👤</span>
-          <input type="text" placeholder="Your full name" value={info.name}
-            onChange={(e) => setInfo({ ...info, name: e.target.value })} />
-        </div>
+        <input type="text" placeholder="Your full name" value={info.name}
+          onChange={(e) => setInfo({ ...info, name: e.target.value })} />
         {errors.name && <span className="field-err">{errors.name}</span>}
       </div>
 
       <div className="kiosk-field">
         <label>Phone Number <span className="req">*</span></label>
-        <div className="input-wrap">
-          <span className="input-icon">📞</span>
-          <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
-            onChange={(e) => setInfo({ ...info, phone: e.target.value })} />
-        </div>
+        <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
+          onChange={(e) => setInfo({ ...info, phone: e.target.value })} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
       </div>
 
       <div className="kiosk-field">
         <label>Email <span className="opt">(optional)</span></label>
-        <div className="input-wrap">
-          <span className="input-icon">✉️</span>
-          <input type="email" placeholder="you@example.com" value={info.email}
-            onChange={(e) => setInfo({ ...info, email: e.target.value })} />
-        </div>
+        <input type="email" placeholder="you@example.com" value={info.email}
+          onChange={(e) => setInfo({ ...info, email: e.target.value })} />
         {errors.email && <span className="field-err">{errors.email}</span>}
+      </div>
+
+      <div className="kiosk-field">
+        <label>Which college do you want to get admitted to? <span className="opt">(optional)</span></label>
+        <input type="text" placeholder="Your dream college" value={info.college}
+          onChange={(e) => setInfo({ ...info, college: e.target.value })} />
       </div>
 
       <div className="kiosk-field">

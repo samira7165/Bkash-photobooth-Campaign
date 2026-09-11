@@ -1,26 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { resolveDownloadToken, requestDownloadOtp } from '@/services/api';
+import { useState } from 'react';
+import { requestDownloadOtp } from '@/services/api';
 
 interface Props {
-  token: string;
   onComplete: (phone: string) => void;
 }
 
-export default function DownloadPhoneEntry({ token, onComplete }: Props) {
-  const [checking, setChecking] = useState(true);
-  const [linkValid, setLinkValid] = useState(false);
+export default function DownloadPhoneEntry({ onComplete }: Props) {
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    resolveDownloadToken(token)
-      .then((res) => setLinkValid(res.valid))
-      .catch(() => setLinkValid(false))
-      .finally(() => setChecking(false));
-  }, [token]);
 
   const submit = async () => {
     if (!phone.trim()) {
@@ -30,7 +20,7 @@ export default function DownloadPhoneEntry({ token, onComplete }: Props) {
     setLoading(true);
     setError('');
     try {
-      await requestDownloadOtp(token, phone.trim());
+      await requestDownloadOtp(phone.trim());
       onComplete(phone.trim());
     } catch (err: any) {
       setError(err.message);
@@ -39,29 +29,10 @@ export default function DownloadPhoneEntry({ token, onComplete }: Props) {
     }
   };
 
-  if (checking) {
-    return (
-      <div className="download-card">
-        <div className="download-spinner" />
-      </div>
-    );
-  }
-
-  if (!linkValid) {
-    return (
-      <div className="download-card">
-        <h2 className="download-title">Link expired</h2>
-        <p className="download-sub">
-          This download link is no longer valid. Please contact the event organizer for help.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="download-card">
-      <h2 className="download-title">Access your images</h2>
-      <p className="download-sub">Enter your mobile number to access your images</p>
+      <h2 className="download-title">Find your images</h2>
+      <p className="download-sub">Enter the mobile number you used when you took your picture</p>
 
       <div className="download-field">
         <label>Mobile Number</label>

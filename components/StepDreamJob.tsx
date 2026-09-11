@@ -122,17 +122,13 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
           className="kiosk-field"
           style={{ marginTop: '0.75rem' }}
         >
-          <div className="input-wrap">
-
-            <input
-              type="text"
-              placeholder="Type your dream job…"
-              value={customJob}
-              onChange={(e) => setCustomJob(e.target.value)}
-              autoFocus
-            />
-
-          </div>
+          <input
+            type="text"
+            placeholder="Type your dream job…"
+            value={customJob}
+            onChange={(e) => setCustomJob(e.target.value)}
+            autoFocus
+          />
         </div>
       )}
 

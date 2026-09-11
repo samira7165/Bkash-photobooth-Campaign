@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
         name: s.name,
         phone: s.phone,
         email: s.email,
+        college: s.college,
         gender: s.gender,
         selectedJob: s.selectedJob,
         customJob: s.customJob,

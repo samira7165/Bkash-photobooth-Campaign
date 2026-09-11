@@ -11,7 +11,7 @@ const VALID_CAREERS = [
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, email, gender, career, eventId } = body;
+    const { name, phone, email, college, gender, career, eventId } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ message: 'Name is required' }, { status: 400 });
@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         phone: normalizePhone(phone.trim()),
         email: email?.trim() || null,
+        college: college?.trim() || null,
         gender,
         career,
         eventId,
