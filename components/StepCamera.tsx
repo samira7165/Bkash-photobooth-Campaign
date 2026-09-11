@@ -169,6 +169,9 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
             {busy ? <span className="shutter-spin" /> : <span className="shutter-circle" />}
           </button>
           <p className="cam-hint">Position yourself inside the frame and tap to capture.</p>
+          <button className="kiosk-btn-secondary" onClick={() => fileInputRef.current?.click()} disabled={busy}>
+            Upload Photo Instead
+          </button>
         </>
       ) : (
         <>

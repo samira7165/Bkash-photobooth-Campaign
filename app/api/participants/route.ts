@@ -5,13 +5,13 @@ import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/ut
 const VALID_CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
 ];
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, phone, email, college, gender, career, eventId } = body;
+    const { name, phone, email, college, gender, career, customCareer, eventId } = body;
 
     if (!name?.trim()) {
       return NextResponse.json({ message: 'Name is required' }, { status: 400 });
@@ -29,6 +29,9 @@ export async function POST(req: NextRequest) {
     if (!career || !VALID_CAREERS.includes(career)) {
       return NextResponse.json({ message: 'A valid career must be selected' }, { status: 400 });
     }
+    if (career === 'Other' && !customCareer?.trim()) {
+      return NextResponse.json({ message: 'Custom career is required when selecting Other' }, { status: 400 });
+    }
     if (!eventId?.trim()) {
       return NextResponse.json({ message: 'eventId is required' }, { status: 400 });
     }
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
         email: email?.trim() || null,
         college: college?.trim() || null,
         gender,
-        career,
+        career: career === 'Other' ? customCareer.trim() : career,
         eventId,
       },
     });

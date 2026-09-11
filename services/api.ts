@@ -84,6 +84,7 @@ export async function createParticipant(data: {
   college?: string;
   gender: string;
   career: string;
+  customCareer?: string;
   eventId: string;
 }): Promise<{ participantId: string }> {
   const res = await fetch('/api/participants', {
@@ -639,6 +640,40 @@ export async function updateBaseImage(
 
 export async function deleteBaseImage(id: string): Promise<void> {
   const res = await fetch(`/api/admin/base-images/${id}`, { method: 'DELETE' });
+  await handle<{ success: boolean; message: string }>(res);
+}
+
+// ─── Admin: Job Overlays ───
+// One static overlay image per job (frame/text/logo), composited on top of
+// the AI-generated photo at generation time — guarantees the same overlay
+// design on every image for that job.
+
+export interface JobOverlay {
+  id: string;
+  job: string;
+  imageUrl: string;
+  imagePath: string;
+  width: number;
+  height: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getJobOverlays(): Promise<JobOverlay[]> {
+  const res = await fetch('/api/admin/job-overlays');
+  return handle<JobOverlay[]>(res);
+}
+
+export async function uploadJobOverlay(job: string, file: File): Promise<JobOverlay> {
+  const fd = new FormData();
+  fd.append('job', job);
+  fd.append('file', file);
+  const res = await fetch('/api/admin/job-overlays', { method: 'POST', body: fd });
+  return handle<JobOverlay>(res);
+}
+
+export async function deleteJobOverlay(job: string): Promise<void> {
+  const res = await fetch(`/api/admin/job-overlays/${encodeURIComponent(job)}`, { method: 'DELETE' });
   await handle<{ success: boolean; message: string }>(res);
 }
 
