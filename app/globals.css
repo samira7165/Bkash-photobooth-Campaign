@@ -2277,6 +2277,14 @@ textarea.admin-textarea:focus {
 .download-all-btn { display: block; width: auto; margin: 0 auto; padding: 0.8rem 2rem; border: 1px solid #ffb6d5; }
 .download-submission-heading { color: #fff; }
 .site-page-transition { min-height: 100dvh; }
+@media (max-width: 480px) {
+  .kiosk, .download-page {
+    background-image: url('/mobile-background.png');
+    background-position: center center;
+    background-size: cover;
+    background-attachment: scroll;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
