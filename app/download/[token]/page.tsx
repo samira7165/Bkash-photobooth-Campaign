@@ -4,6 +4,7 @@ import { useState } from 'react';
 import DownloadPhoneEntry from '@/components/download/DownloadPhoneEntry';
 import DownloadOtpEntry from '@/components/download/DownloadOtpEntry';
 import DownloadGallery from '@/components/download/DownloadGallery';
+import { MotionStep } from '@/components/MotionStep';
 
 type Step = 'phone' | 'otp' | 'gallery';
 
@@ -13,6 +14,7 @@ export default function DownloadTokenPage({ params }: { params: { token: string 
 
   return (
     <div className="download-page">
+      <MotionStep stepKey={step}>
       {step === 'phone' && (
         <DownloadPhoneEntry
           token={params.token}
@@ -27,6 +29,7 @@ export default function DownloadTokenPage({ params }: { params: { token: string 
         />
       )}
       {step === 'gallery' && <DownloadGallery token={params.token} />}
+      </MotionStep>
     </div>
   );
 }

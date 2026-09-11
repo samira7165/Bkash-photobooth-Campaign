@@ -12,6 +12,34 @@
   justify-content: center;
 }
 
+/* The template remounts on navigation without changing page layout. */
+.page-transition {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: linear-gradient(115deg, #e2136e, #ed5a97);
+  transform-origin: right center;
+  animation: page-reveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes page-reveal {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+
+/* MotionStep owns the transition; avoid a second animation on its cards. */
+.motion-step .fade-in,
+.motion-step .kiosk-card.fade-in {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-transition {
+    display: none;
+  }
+}
+
 :root {
   --bg: #0a0c10;
   --surface: #13161d;

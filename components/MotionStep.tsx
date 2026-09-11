@@ -16,10 +16,16 @@ export function MotionStep({ stepKey, children }: MotionStepProps) {
       <motion.div
         key={stepKey}
         className="motion-step"
-        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.985 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -16, scale: 0.99 }}
-        transition={{ duration: reduceMotion ? 0.15 : 0.35, ease: [0.22, 1, 0.36, 1] }}
+        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 36, scale: 0.985 }}
+        animate={{ opacity: 1, x: 0, scale: 1 }}
+        exit={{
+          opacity: 0,
+          x: reduceMotion ? 0 : -24,
+          scale: reduceMotion ? 1 : 0.99,
+          pointerEvents: 'none',
+          transition: { duration: reduceMotion ? 0 : 0.18 },
+        }}
+        transition={{ duration: reduceMotion ? 0 : 0.38, ease: [0.22, 1, 0.36, 1] }}
       >
         {children}
       </motion.div>
