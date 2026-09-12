@@ -1,5 +1,5 @@
 import { generateImage } from './ai-generation';
-import { sendXriSms } from './sms-gateway';
+import { sendRouteMobileSms } from './sms-gateway';
 import { processNextParticipantJob, retryPendingParticipantSms } from './participant-queue';
 import { renderOriginal, renderBrandedGenerated } from './rendered-photo-cache';
 import type { Session } from '@prisma/client';
@@ -76,7 +76,7 @@ async function processSession(session: Session) {
     const message = `[Dream Career] Hi ${session.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     try {
-      await sendXriSms(session.phone, message);
+      await sendRouteMobileSms(session.phone, message);
       await prisma.session.update({
         where: { id: session.id },
         data: {
@@ -158,7 +158,7 @@ export async function retryPendingSessionSms() {
     console.log(`[Queue] Retrying SMS for session ${session.id} (attempt ${session.smsAttempts + 1})`);
 
     try {
-      await sendXriSms(session.phone, message);
+      await sendRouteMobileSms(session.phone, message);
       await prisma.session.update({
         where: { id: session.id },
         data: { smsSent: true, status: 'sms_sent' },

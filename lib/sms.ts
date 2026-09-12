@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as crypto from 'crypto';
 import prisma from './db';
-import { sendXriSms } from './sms-gateway';
+import { sendRouteMobileSms } from './sms-gateway';
 import {
   getNextSmsProvider,
   markSmsProviderFailed,
@@ -124,7 +124,7 @@ export async function sendOtp(phone: string): Promise<void> {
     },
   });
 
-  await sendXriSms(phone, `[Dream Career] Your verification code is: ${otpCode}. It expires in ${ttlMinutes} minutes.`);
+  await sendRouteMobileSms(phone, `[Dream Career] Your verification code is: ${otpCode}. It expires in ${ttlMinutes} minutes.`);
 }
 
 export async function verifyOtp(phone: string, otpCode: string): Promise<boolean> {
