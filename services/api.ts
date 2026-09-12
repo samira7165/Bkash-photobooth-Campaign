@@ -177,6 +177,24 @@ export async function requestDownloadOtp(phone: string): Promise<void> {
   await handle(res);
 }
 
+/**
+ * Ask the server whether this browser already proved it owns `phone` (the
+ * long-lived cookie set when the code was last verified — including during
+ * registration on the index page). Resolves true when the server issued a
+ * fresh download session, false when an OTP is still required.
+ */
+export async function resumeDownloadSession(phone: string): Promise<boolean> {
+  const res = await fetch(`/api/download/resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+    credentials: 'include',
+  });
+  if (res.status === 401) return false; // expected: this browser must do the OTP
+  await handle(res);
+  return true;
+}
+
 export async function verifyDownloadOtp(phone: string, otp: string): Promise<void> {
   const res = await fetch(`/api/download/verify-otp`, {
     method: 'POST',

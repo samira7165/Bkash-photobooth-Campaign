@@ -6,7 +6,19 @@ import * as crypto from 'crypto';
 // it; the embedded expiry and participantId are re-checked on every request.
 
 const SESSION_TTL_MS = 45 * 60 * 1000; // 45 minutes
+// The "remember this browser" credential. Same signed-token scheme, just a far
+// longer life: it lets someone who already proved they own this number (when
+// registering, or on a previous visit) reach their gallery without another OTP.
+// It is never accepted in place of a session — it only mints a fresh one, and
+// only for the exact phone number embedded in its own signature.
+const REMEMBER_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 export const DOWNLOAD_SESSION_COOKIE = 'dl_session';
+export const DOWNLOAD_REMEMBER_COOKIE = 'dl_remember';
+
+/** Cookie max-age values in seconds, so routes don't restate the TTLs. */
+export const DOWNLOAD_SESSION_MAX_AGE = SESSION_TTL_MS / 1000;
+export const DOWNLOAD_REMEMBER_MAX_AGE = REMEMBER_TTL_MS / 1000;
 
 interface DownloadSessionPayload {
   phone: string;
@@ -25,14 +37,22 @@ function sign(payloadB64: string): string {
   return crypto.createHmac('sha256', getSecret()).update(payloadB64).digest('hex');
 }
 
-export function createDownloadSessionToken(phone: string): string {
+function createToken(phone: string, ttlMs: number): string {
   const payload: DownloadSessionPayload = {
     phone,
-    exp: Date.now() + SESSION_TTL_MS,
+    exp: Date.now() + ttlMs,
   };
   const payloadB64 = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signature = sign(payloadB64);
   return `${payloadB64}.${signature}`;
+}
+
+export function createDownloadSessionToken(phone: string): string {
+  return createToken(phone, SESSION_TTL_MS);
+}
+
+export function createDownloadRememberToken(phone: string): string {
+  return createToken(phone, REMEMBER_TTL_MS);
 }
 
 export function verifyDownloadSessionToken(token: string | undefined | null): DownloadSessionPayload | null {

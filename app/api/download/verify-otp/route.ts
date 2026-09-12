@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { verifyOtp } from '@/lib/sms';
-import { createDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
+import {
+  createDownloadSessionToken,
+  createDownloadRememberToken,
+  DOWNLOAD_SESSION_COOKIE,
+  DOWNLOAD_REMEMBER_COOKIE,
+  DOWNLOAD_SESSION_MAX_AGE,
+  DOWNLOAD_REMEMBER_MAX_AGE,
+} from '@/lib/download-session';
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,15 +28,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Invalid or expired code' }, { status: 401 });
     }
 
-    const sessionToken = createDownloadSessionToken(normalizedPhone);
-
-    const res = NextResponse.json({ success: true });
-    res.cookies.set(DOWNLOAD_SESSION_COOKIE, sessionToken, {
+    const cookieOptions = {
       httpOnly: true,
       path: '/',
-      maxAge: 45 * 60,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
+    };
+
+    const res = NextResponse.json({ success: true });
+    res.cookies.set(DOWNLOAD_SESSION_COOKIE, createDownloadSessionToken(normalizedPhone), {
+      ...cookieOptions,
+      maxAge: DOWNLOAD_SESSION_MAX_AGE,
+    });
+    // Remember this browser so the same person can come back to /download
+    // later and skip the OTP. This is what makes registering on the index
+    // page carry over — that flow verifies through this very endpoint.
+    res.cookies.set(DOWNLOAD_REMEMBER_COOKIE, createDownloadRememberToken(normalizedPhone), {
+      ...cookieOptions,
+      maxAge: DOWNLOAD_REMEMBER_MAX_AGE,
     });
     return res;
   } catch (error: any) {
