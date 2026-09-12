@@ -111,7 +111,7 @@ export default function ExperienceInfo({ onComplete }: Props) {
 
       <div className="kiosk-field">
         <label>Mobile Number <span className="req">*</span></label>
-        <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
+        <input type="tel" placeholder="01XXXXXXXXX" value={info.phone}
           onChange={(e) => handlePhoneChange(e.target.value)} onBlur={handlePhoneBlur} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
         {alreadyParticipated && (

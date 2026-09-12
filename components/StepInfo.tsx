@@ -107,7 +107,7 @@ export default function StepInfo({ onComplete }: Props) {
 
       <div className="kiosk-field">
         <label>Phone Number <span className="req">*</span></label>
-        <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
+        <input type="tel" placeholder="01XXXXXXXXX" value={info.phone}
           onChange={(e) => handlePhoneChange(e.target.value)} onBlur={handlePhoneBlur} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
         {alreadyUsed && (

@@ -72,7 +72,7 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
           id="download-phone"
           autoComplete="tel"
           type="tel"
-          placeholder="+880 1XX XXXX XXX"
+          placeholder="01XXXXXXXXX"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
         />
