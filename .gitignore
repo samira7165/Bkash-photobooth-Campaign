@@ -14,3 +14,4 @@ uploads/rendered/*
 !uploads/event-pdfs/.gitkeep
 !uploads/comic/.gitkeep
 !uploads/rendered/.gitkeep
+.DS_Store
