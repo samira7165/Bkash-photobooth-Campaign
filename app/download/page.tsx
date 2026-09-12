@@ -23,7 +23,7 @@ export default function DownloadPage() {
       {step === 'phone' && (
         <DownloadPhoneEntry
           initialPhone={phone}
-          onComplete={(p) => { setPhone(p); setStep('otp'); }}
+          onComplete={(p, verified) => { setPhone(p); setStep(verified ? 'gallery' : 'otp'); }}
         />
       )}
       {step === 'otp' && (

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { requestDownloadOtp, verifyDownloadOtp } from '@/services/api';
+import { rememberPhone } from '@/lib/remembered-phone';
 
 interface Props {
   phone: string;
@@ -24,6 +25,9 @@ export default function DownloadOtpEntry({ phone, onComplete }: Props) {
     setError('');
     try {
       await verifyDownloadOtp(phone, otp.trim());
+      // Ownership is now proved for this browser; remember the number so the
+      // download portal can prefill it and skip straight past the OTP.
+      rememberPhone(phone);
       onComplete();
     } catch (err: any) {
       setError(err.message);

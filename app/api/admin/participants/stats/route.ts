@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
         totalOtpSent,
         otpVerified,
         otpFailed,
+        totalQrScans,
+        qrScansByCode,
       ] = await Promise.all([
         prisma.participant.count(),
         prisma.image.count({ where: { processingStatus: { in: ['generated', 'sms_sent'] } } }),
@@ -26,6 +28,12 @@ export async function GET(req: NextRequest) {
         prisma.otp.count(),
         prisma.otp.count({ where: { verified: true } }),
         prisma.otp.count({ where: { verified: false, expiresAt: { lt: new Date() } } }),
+        prisma.qrScan.count(),
+        prisma.qrScan.groupBy({
+          by: ['code'],
+          _count: { code: true },
+          orderBy: { _count: { code: 'desc' } },
+        }),
       ]);
 
       return NextResponse.json({
@@ -35,6 +43,11 @@ export async function GET(req: NextRequest) {
         totalOtpSent,
         otpVerified,
         otpFailed,
+        totalQrScans,
+        byQrCode: qrScansByCode.map((row) => ({
+          code: row.code,
+          count: row._count.code,
+        })),
         byEvent: events.map((e) => ({
           eventId: e.id,
           eventName: e.name,

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { requestParticipantOtp, verifyDownloadOtp } from '@/services/api';
+import { rememberPhone } from '@/lib/remembered-phone';
 
 interface Props {
   phone: string;
@@ -31,6 +32,9 @@ export default function ExperienceVerifyPhone({ phone, onComplete }: Props) {
       // Reuses the download portal's verify endpoint — it's generic
       // (verify code, issue a phone-ownership cookie), not download-specific.
       await verifyDownloadOtp(phone, otp.trim());
+      // Ownership is now proved for this browser; remember the number so the
+      // download portal can prefill it and skip straight past the OTP.
+      rememberPhone(phone);
       onComplete();
     } catch (err: any) {
       setError(err.message);

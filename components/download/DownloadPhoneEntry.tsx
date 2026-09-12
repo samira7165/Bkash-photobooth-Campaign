@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
-import { requestDownloadOtp } from '@/services/api';
+import { requestDownloadOtp, resumeDownloadSession } from '@/services/api';
+import { getRememberedPhone, rememberPhone } from '@/lib/remembered-phone';
 
 interface Props {
   initialPhone?: string;
-  onComplete: (phone: string) => void;
+  /** `verified` is true when this browser was already trusted and no OTP was sent. */
+  onComplete: (phone: string, verified: boolean) => void;
 }
 
 export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Props) {
@@ -16,6 +18,15 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
   const [phone, setPhone] = useState(initialPhone);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Prefill the number last verified in this browser. Done in an effect rather
+  // than useState's initialiser because localStorage doesn't exist during SSR,
+  // and reading it inline would desync the server and client render.
+  useEffect(() => {
+    if (initialPhone) return;
+    const remembered = getRememberedPhone();
+    if (remembered) setPhone(remembered);
+  }, [initialPhone]);
 
   const submit = async () => {
     if (!phone.trim()) {
@@ -34,8 +45,17 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
     setLoading(true);
     setError('');
     try {
-      await requestDownloadOtp(phone.trim());
-      onComplete(phone.trim());
+      const trimmed = phone.trim();
+      // If this browser already proved it owns this exact number — by
+      // registering on the index page, or verifying here before — the server
+      // hands back a session and nobody has to wait for another SMS.
+      if (await resumeDownloadSession(trimmed)) {
+        rememberPhone(trimmed);
+        onComplete(trimmed, true);
+        return;
+      }
+      await requestDownloadOtp(trimmed);
+      onComplete(trimmed, false);
     } catch (err: any) {
       setError(err.message);
     } finally {

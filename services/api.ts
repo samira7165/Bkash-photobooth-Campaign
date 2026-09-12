@@ -185,6 +185,24 @@ export async function requestDownloadOtp(phone: string): Promise<void> {
   await handle(res);
 }
 
+/**
+ * Ask the server whether this browser already proved it owns `phone` (the
+ * long-lived cookie set when the code was last verified — including during
+ * registration on the index page). Resolves true when the server issued a
+ * fresh download session, false when an OTP is still required.
+ */
+export async function resumeDownloadSession(phone: string): Promise<boolean> {
+  const res = await fetch(`/api/download/resume`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+    credentials: 'include',
+  });
+  if (res.status === 401) return false; // expected: this browser must do the OTP
+  await handle(res);
+  return true;
+}
+
 export async function verifyDownloadOtp(phone: string, otp: string): Promise<void> {
   const res = await fetch(`/api/download/verify-otp`, {
     method: 'POST',
@@ -296,7 +314,27 @@ export interface ParticipantStats {
   totalOtpSent: number;
   otpVerified: number;
   otpFailed: number;
+  totalQrScans: number;
+  byQrCode: { code: string; count: number }[];
   byEvent: { eventId: string; eventName: string; count: number }[];
+}
+
+/**
+ * Record a scan of a printed QR code. Fire-and-forget: a failed beacon must
+ * never interrupt someone trying to use the experience, so callers ignore
+ * the result and this never throws.
+ */
+export async function recordQrScan(code: string): Promise<void> {
+  try {
+    await fetch('/api/qr-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics only — never surfaced to the visitor */
+  }
 }
 
 export async function getParticipantStats(): Promise<ParticipantStats> {

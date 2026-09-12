@@ -2491,6 +2491,48 @@ function ParticipantsSection({
         </div>
       </div>
 
+      <div className="admin-stats-grid">
+        <div className="admin-stat-card">
+          <div className="admin-stat-num info">{stats?.totalQrScans ?? '—'}</div>
+          <div className="admin-stat-label">QR Code Scans</div>
+        </div>
+      </div>
+
+      <div className="admin-panel" style={{ marginBottom: '1.25rem' }}>
+        <div className="admin-panel-head">
+          <span className="admin-panel-title">QR Code Scans by Code</span>
+        </div>
+        {!stats?.byQrCode?.length ? (
+          <p style={{ color: '#8a8f9c', fontSize: '0.85rem', margin: 0 }}>
+            No scans recorded yet. Point a printed code at{' '}
+            <code>{'https://livebeats.online/?qr=<code>'}</code> and each visit is counted here.
+          </p>
+        ) : (
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Scans</th>
+                <th>Share</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.byQrCode.map((row) => (
+                <tr key={row.code}>
+                  <td><code>{row.code}</code></td>
+                  <td>{row.count}</td>
+                  <td>
+                    {stats.totalQrScans > 0
+                      ? `${Math.round((row.count / stats.totalQrScans) * 100)}%`
+                      : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <div className="admin-panel" style={{ marginBottom: '1.25rem' }}>
         <div className="admin-panel-head">
           <span className="admin-panel-title">Events</span>
