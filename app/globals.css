@@ -2343,7 +2343,8 @@ textarea.admin-textarea:focus {
   flex: 0 0 auto; padding: 0.85rem 1.1rem; border-top: 1px solid #efbfd3;
   display: flex; justify-content: center;
 }
-.pdf-preview-modal-actions .download-item-btn { width: auto; padding: 0.7rem 1.4rem; }
+.pdf-preview-modal-actions .download-item-btn { width: auto; padding: 0.7rem 1.6rem; justify-content: center; gap: 0.55rem; }
+.pdf-preview-modal-actions .download-item-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
 .download-results .download-item-btn { display: flex; align-items: center; justify-content: space-between; min-height: 44px; background: linear-gradient(100deg, #ff2387, #ed0872); border: 1px solid transparent; border-radius: 12px; padding: 0.7rem 0.8rem; }
 .download-results .download-preview-btn { background: #fff; border-color: #f6aacb; color: #e2136e; }
 .download-results .download-item-btn:hover { filter: brightness(0.95); }

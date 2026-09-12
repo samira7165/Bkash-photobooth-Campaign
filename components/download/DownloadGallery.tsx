@@ -168,8 +168,11 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
                 onComicDownload();
               }}
             >
-              <span>Click Here To Download Comic Book</span>
-              <span aria-hidden="true">↓</span>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 4v11m0 0-4-4m4 4 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Download</span>
             </a>
           </div>
         </dialog>
