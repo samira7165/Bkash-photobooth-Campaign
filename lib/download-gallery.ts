@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { phoneSearchVariants } from '@/lib/utils';
 
 // Booth SessionStatus and mobile ImageProcessingStatus overlap on the
 // meaningful states (queued/processing/generated/sms_sent/failed) — booth
@@ -9,14 +10,15 @@ function mapSessionStatus(status: string): string {
 }
 
 export async function getDownloadSubmissions(phone: string, fileBase = '/api/download/file') {
+    const phoneWhere = { phone: { in: phoneSearchVariants(phone) } };
     const [participants, boothSessions] = await Promise.all([
       prisma.participant.findMany({
-        where: { phone: phone },
+        where: phoneWhere,
         include: { event: true, images: { orderBy: { createdAt: 'desc' } } },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.session.findMany({
-        where: { phone: phone },
+        where: phoneWhere,
         orderBy: { createdAt: 'desc' },
       }),
     ]);

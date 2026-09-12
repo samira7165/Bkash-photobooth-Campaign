@@ -32,6 +32,10 @@ function isOpenAiUrl(apiUrl: string): boolean {
   return apiUrl.includes('api.openai.com');
 }
 
+function isRateLimitError(err: any): boolean {
+  return err?.response?.status === 429 || /\b429\b|rate limit|quota/i.test(err?.message || '');
+}
+
 function mimeTypeFor(filePath: string): string {
   const ext = path.extname(filePath).toLowerCase();
   const map: Record<string, string> = {
@@ -235,6 +239,17 @@ export async function generateImage(params: GenerateParams): Promise<string> {
       lastError = err.message;
       console.error(`[AI] Provider "${provider.name}" failed: ${lastError}`);
       await markAiProviderFailed(provider.id, lastError);
+
+      // A 429 isn't a broken provider — it's the provider correctly telling
+      // us to slow down. With a single provider configured, the cooldown
+      // logic above resets and hands it right back out on the very next
+      // attempt, so without a real pause here a rate-limit burst would just
+      // retry near-instantly and make the burst worse instead of better.
+      if (isRateLimitError(err) && attempt < maxAttempts - 1) {
+        const backoffMs = Math.min(30_000, 2000 * 2 ** attempt);
+        console.warn(`[AI] Rate limited — backing off ${backoffMs}ms before retrying`);
+        await new Promise((r) => setTimeout(r, backoffMs));
+      }
     }
   }
 

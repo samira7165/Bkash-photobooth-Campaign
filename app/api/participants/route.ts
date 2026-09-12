@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
 
 const VALID_CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
@@ -21,6 +22,18 @@ export async function POST(req: NextRequest) {
     }
     if (!isValidPhone(phone)) {
       return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
+    }
+
+    const normalizedPhone = normalizePhone(phone.trim());
+
+    // Requires the OTP verification step (ExperienceVerifyPhone /
+    // /api/download/verify-otp) to have already proven this browser controls
+    // this exact phone number — otherwise anyone could submit someone else's
+    // number, and since phone is now globally unique, that would permanently
+    // lock the real owner out of ever participating.
+    const dlSession = verifyDownloadSessionToken(req.cookies.get(DOWNLOAD_SESSION_COOKIE)?.value);
+    if (dlSession?.phone !== normalizedPhone) {
+      return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
     }
 
     if (!['male', 'female'].includes(gender)) {
@@ -44,7 +57,7 @@ export async function POST(req: NextRequest) {
     const participant = await prisma.participant.create({
       data: {
         name: name.trim(),
-        phone: normalizePhone(phone.trim()),
+        phone: normalizedPhone,
         email: email?.trim() || null,
         college: college?.trim() || null,
         gender,

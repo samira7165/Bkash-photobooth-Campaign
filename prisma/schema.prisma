@@ -34,9 +34,15 @@ model Session {
   customJob          String?       @db.VarChar(200)
   originalImagePath  String?       @db.VarChar(500)
   generatedImagePath String?       @db.VarChar(500)
+  // Pre-rendered (framed/branded) copies, cached to disk once so the
+  // download portal never has to redo Sharp compositing on every view.
+  renderedOriginalPath  String?    @db.VarChar(500)
+  renderedGeneratedPath String?    @db.VarChar(500)
   status             SessionStatus @default(created)
   smsSent            Boolean       @default(false)
   smsShortUrl        String?       @db.VarChar(500)
+  smsAttempts        Int           @default(0)
+  smsLastAttemptAt   DateTime?
   queuePosition      Int?
   downloadCount      Int           @default(0)
   errorMessage       String?       @db.Text
@@ -179,7 +185,9 @@ model Event {
 model Participant {
   id        String            @id @default(uuid())
   name      String            @db.VarChar(100)
-  phone     String            @db.VarChar(20)
+  // Global — one phone number can only ever have one Participant record,
+  // across every event, not just the current one.
+  phone     String            @unique @db.VarChar(20)
   email     String?           @db.VarChar(150)
   college   String?           @db.VarChar(200)
   gender    ParticipantGender
@@ -190,8 +198,6 @@ model Participant {
   event  Event   @relation(fields: [eventId], references: [id])
   images Image[]
 
-  @@unique([phone, eventId])
-  @@index([phone])
   @@index([eventId])
   @@map("participants")
 }
@@ -199,12 +205,23 @@ model Participant {
 model Image {
   id               String                 @id @default(uuid())
   participantId    String
+  // Client-generated key sent with the upload so a retried request (e.g. the
+  // first response was lost to a network drop) reattaches to the same image
+  // instead of creating a second row — which would mean two generations and
+  // two notification SMS for one photo.
+  clientRequestId  String?                @unique @db.VarChar(64)
   originalImageUrl String?                @db.VarChar(500)
   aiImageUrl       String?                @db.VarChar(500)
+  // Pre-rendered (framed/branded) copies, cached to disk once so the
+  // download portal never has to redo Sharp compositing on every view.
+  renderedOriginalPath String?            @db.VarChar(500)
+  renderedAiPath       String?            @db.VarChar(500)
   processingStatus ImageProcessingStatus  @default(queued)
   downloadCount    Int                    @default(0)
   errorMessage     String?                @db.Text
   smsSent          Boolean                @default(false)
+  smsAttempts      Int                    @default(0)
+  smsLastAttemptAt DateTime?
   createdAt        DateTime               @default(now())
   updatedAt        DateTime               @updatedAt
 

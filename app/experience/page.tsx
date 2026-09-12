@@ -5,12 +5,13 @@ import { useSearchParams } from 'next/navigation';
 import { getActiveEvent } from '@/services/api';
 import ExperienceLanding from '@/components/experience/ExperienceLanding';
 import ExperienceInfo, { ExperienceInfoData } from '@/components/experience/ExperienceInfo';
+import ExperienceVerifyPhone from '@/components/experience/ExperienceVerifyPhone';
 import ExperienceCareer from '@/components/experience/ExperienceCareer';
 import ExperienceCamera from '@/components/experience/ExperienceCamera';
 import ExperienceProcessing from '@/components/experience/ExperienceProcessing';
 import ExperienceSuccess from '@/components/experience/ExperienceSuccess';
 
-type Step = 'loading' | 'noEvent' | 'landing' | 'info' | 'career' | 'camera' | 'processing' | 'success' | 'error';
+type Step = 'loading' | 'noEvent' | 'landing' | 'info' | 'verify' | 'career' | 'camera' | 'processing' | 'success' | 'error';
 
 function ExperienceFlow() {
   const searchParams = useSearchParams();
@@ -82,7 +83,14 @@ function ExperienceFlow() {
 
           {step === 'info' && (
             <ExperienceInfo
-              onComplete={(data) => { setInfo(data); setStep('career'); }}
+              onComplete={(data) => { setInfo(data); setStep('verify'); }}
+            />
+          )}
+
+          {step === 'verify' && info && (
+            <ExperienceVerifyPhone
+              phone={info.phone}
+              onComplete={() => setStep('career')}
             />
           )}
 

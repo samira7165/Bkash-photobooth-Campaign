@@ -4,9 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/download-session';
 import { normalizePhone } from '@/lib/utils';
-import { frameOriginalPhoto } from '@/lib/original-photo-frame';
-import { brandGeneratedPhoto } from '@/lib/generated-photo-logo';
-import { frameGeneratedPhoto } from '@/lib/generated-photo-frame';
+import { renderOriginal, renderBrandedGenerated } from '@/lib/rendered-photo-cache';
 
 
 function sanitize(value: string): string {
@@ -49,6 +47,9 @@ export async function serveDownloadFile(
     let dreamJob: string;
     let pdfNameForFilename: string | null = null;
     let incrementDownload: () => Promise<void>;
+    let renderedPath: string | null = null;
+    let persistRenderedPath: (renderedPath: string) => Promise<void>;
+    const cacheKey = `${source}_${id}`;
 
     if (source === 'mobile') {
       const image = await prisma.image.findUnique({
@@ -61,14 +62,18 @@ export async function serveDownloadFile(
       if (!authorizedStaff && dlSession?.phone !== normalizePhone(image.participant.phone)) {
         return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
       }
-      if (type === 'original') filepath = image.originalImageUrl;
-      else if (type === 'ai') filepath = image.aiImageUrl;
+      if (type === 'original') { filepath = image.originalImageUrl; renderedPath = image.renderedOriginalPath; }
+      else if (type === 'ai') { filepath = image.aiImageUrl; renderedPath = image.renderedAiPath; }
       else filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
       pdfNameForFilename = 'Comic.pdf';
       dreamJob = image.participant.career;
       downloadFilenameBase = `dream_career_${sanitize(image.participant.name)}_${sanitize(image.participant.career)}`;
       incrementDownload = async () => {
         await prisma.image.update({ where: { id: image.id }, data: { downloadCount: { increment: 1 } } });
+      };
+      persistRenderedPath = async (p) => {
+        const data = type === 'original' ? { renderedOriginalPath: p } : { renderedAiPath: p };
+        await prisma.image.update({ where: { id: image.id }, data }).catch(() => {});
       };
     } else {
       const bSession = await prisma.session.findUnique({ where: { id } });
@@ -78,8 +83,8 @@ export async function serveDownloadFile(
       if (!authorizedStaff && dlSession?.phone !== normalizePhone(bSession.phone)) {
         return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
       }
-      if (type === 'original') filepath = bSession.originalImagePath;
-      else if (type === 'ai') filepath = bSession.generatedImagePath;
+      if (type === 'original') { filepath = bSession.originalImagePath; renderedPath = bSession.renderedOriginalPath; }
+      else if (type === 'ai') { filepath = bSession.generatedImagePath; renderedPath = bSession.renderedGeneratedPath; }
       else {
         filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
         pdfNameForFilename = 'Comic.pdf';
@@ -89,17 +94,35 @@ export async function serveDownloadFile(
       incrementDownload = async () => {
         await prisma.session.update({ where: { id: bSession.id }, data: { downloadCount: { increment: 1 } } });
       };
+      persistRenderedPath = async (p) => {
+        const data = type === 'original' ? { renderedOriginalPath: p } : { renderedGeneratedPath: p };
+        await prisma.session.update({ where: { id: bSession.id }, data }).catch(() => {});
+      };
     }
 
     if (!filepath || !fs.existsSync(filepath)) {
       return NextResponse.json({ message: `${type} file not available` }, { status: 404 });
     }
 
-    const buffer = type === 'original'
-      ? await frameOriginalPhoto(filepath)
-      : type === 'ai'
-        ? await brandGeneratedPhoto(await frameGeneratedPhoto(filepath, dreamJob), path.join(process.cwd(), 'public', 'logos', 'Logo.png'))
-        : fs.readFileSync(filepath);
+    // The framed/branded copy is normally already baked by the queue right
+    // after generation (lib/queue.ts / lib/participant-queue.ts) — this is
+    // just the fast path reading that cached file. Only a record generated
+    // before that existed, or one whose pre-render failed, falls through to
+    // rendering (and caching) it here, on this one request.
+    let buffer: Buffer;
+    if (type === 'comic-book') {
+      buffer = fs.readFileSync(filepath);
+    } else if (renderedPath && fs.existsSync(renderedPath)) {
+      buffer = fs.readFileSync(renderedPath);
+    } else if (type === 'original') {
+      const newRenderedPath = await renderOriginal(cacheKey, filepath);
+      buffer = fs.readFileSync(newRenderedPath);
+      await persistRenderedPath(newRenderedPath);
+    } else {
+      const newRenderedPath = await renderBrandedGenerated(cacheKey, filepath, dreamJob);
+      buffer = fs.readFileSync(newRenderedPath);
+      await persistRenderedPath(newRenderedPath);
+    }
     const ext = type === 'original' || type === 'ai' ? '.jpg' : path.extname(filepath).toLowerCase();
     const contentType = MIME_MAP[ext] || 'application/octet-stream';
 

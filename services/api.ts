@@ -45,13 +45,46 @@ export async function selectJob(
   return res.json();
 }
 
+async function handle<T>(res: Response): Promise<T> {
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || 'Request failed');
+  }
+  return res.json();
+}
+
+const UPLOAD_RETRY_ATTEMPTS = 3;
+const UPLOAD_RETRY_DELAY_MS = 1500;
+
+/**
+ * Retries a fetch on genuine network failure (dropped connection, DNS hiccup,
+ * offline) — never on a real response from the server, since a 4xx/5xx is a
+ * definitive answer, not a transient failure to retry.
+ */
+async function fetchWithNetworkRetry(input: RequestInfo, init: RequestInit): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < UPLOAD_RETRY_ATTEMPTS; attempt++) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      lastError = err;
+      if (attempt < UPLOAD_RETRY_ATTEMPTS - 1) {
+        await new Promise((r) => setTimeout(r, UPLOAD_RETRY_DELAY_MS * (attempt + 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function uploadImage(
   sessionId: string,
   imageBlob: Blob,
 ): Promise<SessionData> {
   const formData = new FormData();
   formData.append('image', imageBlob, 'capture.jpg');
-  const res = await fetch(`/api/sessions/${sessionId}/image`, {
+  // Safe to retry without an idempotency key — the session route always
+  // updates the same existing session row rather than creating a new one.
+  const res = await fetchWithNetworkRetry(`/api/sessions/${sessionId}/image`, {
     method: 'POST',
     body: formData,
   });
@@ -62,19 +95,28 @@ export async function uploadImage(
   return res.json();
 }
 
-async function handle<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || 'Request failed');
-  }
-  return res.json();
-}
-
 // ─── Mobile QR Experience (Journey 1) ───
 
 export async function getActiveEvent(): Promise<{ id: string; name: string } | null> {
   const res = await fetch('/api/events/active');
   return handle(res);
+}
+
+export async function checkAlreadyParticipated(phone: string): Promise<boolean> {
+  const qs = new URLSearchParams({ phone });
+  const res = await fetch(`/api/participants/check-phone?${qs.toString()}`);
+  if (!res.ok) return false;
+  const data = await res.json();
+  return !!data.alreadyParticipated;
+}
+
+export async function requestParticipantOtp(phone: string): Promise<void> {
+  const res = await fetch('/api/participants/request-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone }),
+  });
+  await handle(res);
 }
 
 export async function createParticipant(data: {
@@ -99,9 +141,15 @@ export async function uploadParticipantImage(
   participantId: string,
   imageBlob: Blob,
 ): Promise<{ imageId: string }> {
+  // One id for the whole upload attempt (including retries) — the server
+  // uses it to recognize a retried request and return the already-created
+  // image instead of creating a duplicate (which would mean a second
+  // generation and a second notification SMS).
+  const clientRequestId = crypto.randomUUID();
   const formData = new FormData();
   formData.append('image', imageBlob, 'capture.jpg');
-  const res = await fetch(`/api/participants/${participantId}/image`, {
+  formData.append('clientRequestId', clientRequestId);
+  const res = await fetchWithNetworkRetry(`/api/participants/${participantId}/image`, {
     method: 'POST',
     body: formData,
   });

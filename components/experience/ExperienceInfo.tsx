@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import { checkAlreadyParticipated, requestParticipantOtp } from '@/services/api';
 
 export interface ExperienceInfoData {
   name: string;
@@ -16,12 +17,34 @@ interface Props {
   onComplete: (info: ExperienceInfoData) => void;
 }
 
+const PHONE_CHECK_DEBOUNCE_MS = 500;
+
 export default function ExperienceInfo({ onComplete }: Props) {
   const [info, setInfo] = useState<ExperienceInfoData>({ name: '', phone: '', email: '', college: '', gender: '' });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [alreadyParticipated, setAlreadyParticipated] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const checkTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  const handleSubmit = () => {
+  const handlePhoneChange = (phone: string) => {
+    setInfo((prev) => ({ ...prev, phone }));
+    setAlreadyParticipated(false);
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+
+    if (!isValidPhone(phone)) return;
+    checkTimer.current = setTimeout(async () => {
+      const participated = await checkAlreadyParticipated(phone).catch(() => false);
+      setAlreadyParticipated(participated);
+    }, PHONE_CHECK_DEBOUNCE_MS);
+  };
+
+  useEffect(() => () => { if (checkTimer.current) clearTimeout(checkTimer.current); }, []);
+
+  const handleSubmit = async () => {
+    if (alreadyParticipated || submitting) return;
+
     const errs: Record<string, string> = {};
     if (!acceptedTerms) errs.terms = 'Please agree to the Terms and Conditions to continue';
     if (!info.name.trim()) errs.name = 'Name is required';
@@ -33,7 +56,18 @@ export default function ExperienceInfo({ onComplete }: Props) {
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setErrors({});
-    onComplete(info);
+    setSubmitError('');
+    setSubmitting(true);
+    try {
+      // Sends an OTP so the next step can prove this is really their number
+      // before we create a Participant tied to it.
+      await requestParticipantOtp(info.phone.trim());
+      onComplete(info);
+    } catch (err: any) {
+      setSubmitError(err.message);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -59,8 +93,11 @@ export default function ExperienceInfo({ onComplete }: Props) {
       <div className="kiosk-field">
         <label>Mobile Number <span className="req">*</span></label>
         <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
-          onChange={(e) => setInfo({ ...info, phone: e.target.value })} />
+          onChange={(e) => handlePhoneChange(e.target.value)} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
+        {alreadyParticipated && (
+          <span className="field-err">This number has already been used to submit a picture. Check your SMS for the link to get your Future Career image.</span>
+        )}
       </div>
 
       <div className="kiosk-field">
@@ -91,8 +128,10 @@ export default function ExperienceInfo({ onComplete }: Props) {
 
       <TermsAndConditions accepted={acceptedTerms} onChange={setAcceptedTerms} error={errors.terms} />
 
-      <button className="kiosk-btn-primary" onClick={handleSubmit}>
-        <span>Continue</span>
+      {submitError && <p className="field-err" style={{ textAlign: 'center' }}>{submitError}</p>}
+
+      <button className="kiosk-btn-primary" onClick={handleSubmit} disabled={alreadyParticipated || submitting}>
+        <span>{submitting ? 'Sending code…' : 'Continue'}</span>
         <span className="btn-arrow">→</span>
       </button>
 

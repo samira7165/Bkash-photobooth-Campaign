@@ -20,9 +20,21 @@ export async function POST(
 
     const formData = await req.formData();
     const file = formData.get('image') as File;
+    const clientRequestId = formData.get('clientRequestId') as string | null;
 
     if (!file) {
       return NextResponse.json({ message: 'No image provided' }, { status: 400 });
+    }
+
+    // A client-side retry (e.g. the first attempt's response was lost to a
+    // network drop but actually reached the server) reuses the same request
+    // id — return the image already created for it instead of making a
+    // duplicate, which would otherwise mean two generations and two SMS.
+    if (clientRequestId) {
+      const existing = await prisma.image.findUnique({ where: { clientRequestId } });
+      if (existing) {
+        return NextResponse.json({ imageId: existing.id });
+      }
     }
 
     const uploadDir = process.env.UPLOAD_DIR || './uploads';
@@ -43,6 +55,7 @@ export async function POST(
         participantId: params.id,
         originalImageUrl: filepath,
         processingStatus: 'queued',
+        clientRequestId: clientRequestId || undefined,
       },
     });
 

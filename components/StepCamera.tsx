@@ -41,15 +41,35 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
   const webcamRef = useRef<Webcam>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [canSwitchCamera, setCanSwitchCamera] = useState(false);
 
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  // Only devices with more than one camera can actually switch — most booth
+  // kiosk webcams have just one, so the button stays hidden there.
+  const checkCameraCount = useCallback(() => {
+    navigator.mediaDevices?.enumerateDevices?.()
+      .then((devices) => {
+        const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+        setCanSwitchCamera(videoInputs.length > 1);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => { checkCameraCount(); }, [checkCameraCount]);
+
+  const switchCamera = useCallback(() => {
+    setFacingMode((m) => (m === 'user' ? 'environment' : 'user'));
+  }, []);
 
   const setPreview = useCallback((blob: Blob) => {
     setPreviewBlob(blob);
@@ -115,13 +135,18 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
   const submit = useCallback(async () => {
     if (!previewBlob) return;
     setBusy(true);
+    setUploading(true);
     setError('');
+    const warnOnClose = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener('beforeunload', warnOnClose);
     try {
       await uploadImage(sessionId, previewBlob);
       onComplete();
     } catch (err: any) {
       setError(err.message);
     } finally {
+      window.removeEventListener('beforeunload', warnOnClose);
+      setUploading(false);
       setBusy(false);
     }
   }, [previewBlob, sessionId, onComplete]);
@@ -143,9 +168,15 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
         {previewUrl ? (
           <img src={previewUrl} alt="Captured preview" className="cam-feed" />
         ) : (
-          <Webcam ref={webcamRef} audio={false} mirrored
-            videoConstraints={{ facingMode: 'user', width: 1200, height: 1800 }}
+          <Webcam ref={webcamRef} audio={false} mirrored={facingMode === 'user'}
+            videoConstraints={{ facingMode, width: 1200, height: 1800 }}
+            onUserMedia={checkCameraCount}
             className="cam-feed" />
+        )}
+        {!previewUrl && canSwitchCamera && (
+          <button type="button" className="cam-switch-btn" onClick={switchCamera} disabled={busy} aria-label="Switch camera">
+            ⟳
+          </button>
         )}
         <div className="cam-corner tl" />
         <div className="cam-corner tr" />
@@ -184,9 +215,12 @@ export default function StepCamera({ sessionId, jobLabel, onComplete }: Props) {
             </button>
           </div>
           <button className="kiosk-btn-primary" onClick={submit} disabled={busy}>
-            <span>{busy ? 'Submitting…' : 'Submit'}</span>
+            <span>{uploading ? 'Submitting…' : 'Submit'}</span>
             <span className="btn-arrow">→</span>
           </button>
+          {uploading && (
+            <p className="cam-hint" role="alert">Please don&apos;t close this page while your photo uploads.</p>
+          )}
         </>
       )}
     </div>

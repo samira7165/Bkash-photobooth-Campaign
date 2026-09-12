@@ -12,11 +12,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ message: PHONE_VALIDATION_MESSAGE }, { status: 400 });
     }
     try {
-      const normalized = normalizePhone(phone).replace(/^\+88/, '');
-      const groups = await Promise.all([normalized, `+88${normalized}`].map(
-        (value) => getDownloadSubmissions(value, '/api/bp/file'),
-      ));
-      const submissions = groups.flat().sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const normalized = normalizePhone(phone);
+      const submissions = await getDownloadSubmissions(normalized, '/api/bp/file');
       return NextResponse.json({ submissions }, { headers: { 'Cache-Control': 'private, no-store' } });
     } catch (error) {
       console.error('[BP] Search failed:', error);

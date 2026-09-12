@@ -14,13 +14,15 @@ const mocks = {
   '@/lib/db': {
     session: {
       findUnique: async () => { reads++; return record; },
-      findMany: async ({ where }) => where.phone === phone ? [record] : [],
-      update: async () => { downloads++; },
+      findMany: async ({ where }) => (where.phone?.in ?? []).includes(phone) ? [record] : [],
+      // Only a real downloadCount bump counts as a "download" — persisting a
+      // pre-rendered image's cache path is a separate, non-download update.
+      update: async ({ data }) => { if (data?.downloadCount) downloads++; },
     },
     participant: { findMany: async () => [] },
     image: {
       findUnique: async () => ({ originalImageUrl: photo, aiImageUrl: photo, id: 'mobile-1', participant: { name: 'Customer', career: 'Doctor', phone } }),
-      update: async () => { downloads++; },
+      update: async ({ data }) => { if (data?.downloadCount) downloads++; },
     },
   },
   '@/lib/auth': {
