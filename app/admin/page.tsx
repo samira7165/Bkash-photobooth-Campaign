@@ -1358,6 +1358,16 @@ export default function AdminPage() {
                   Download Generated
                 </button>
               )}
+              <button
+                className="admin-delete-btn"
+                onClick={() => {
+                  const id = previewSubmission.id;
+                  setPreviewSubmission(null);
+                  setConfirmAction({ kind: 'submission', type: 'single', id });
+                }}
+              >
+                Delete
+              </button>
               <button className="btn-secondary admin-btn-sm" onClick={() => setPreviewSubmission(null)}>
                 Close
               </button>
