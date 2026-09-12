@@ -20,7 +20,7 @@ export default function DownloadPage() {
           <h1>Find Your Dream Career Photo</h1>
           <p>Enter the phone number you used at the photobooth to retrieve your files.</p>
         </header>
-      {step !== 'otp' && (
+      {step === 'phone' && (
         <DownloadPhoneEntry
           initialPhone={phone}
           onComplete={(p) => { setPhone(p); setStep('otp'); }}

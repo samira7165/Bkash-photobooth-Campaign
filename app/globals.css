@@ -2277,10 +2277,6 @@ textarea.admin-textarea:focus {
 .download-results .download-gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
 .download-results .download-item { flex-direction: column; align-items: stretch; gap: 0.55rem; padding: 1rem; border-radius: 20px; background: #fff9fc; border-color: #f3dce6; min-width: 0; }
 .download-results .download-item-preview { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; background: #f8edf3; }
-.download-comic-cover { display: flex; flex-direction: column; aspect-ratio: 4 / 5; padding: 1.25rem; border-radius: 14px; background: linear-gradient(145deg, #fff0f7, #ffd1e6); color: #a30f56; }
-.download-comic-cover > span { text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.6rem; margin-bottom: 0.55rem; }
-.download-comic-cover strong { font-size: clamp(1.6rem, 2.5vw, 2.2rem); line-height: 0.95; letter-spacing: -0.06em; }
-.download-comic-cover small { margin-top: auto; border-top: 1px solid #eeb0cd; padding-top: 0.8rem; text-transform: uppercase; font-size: 0.55rem; letter-spacing: 0.05em; }
 .download-results .download-item-label { flex: none; margin: 0.5rem 0 0.2rem; }
 .download-results .download-item-btn { display: flex; align-items: center; justify-content: space-between; min-height: 44px; background: linear-gradient(100deg, #ff2387, #ed0872); border: 1px solid transparent; border-radius: 12px; padding: 0.7rem 0.8rem; }
 .download-results .download-preview-btn { background: #fff; border-color: #f6aacb; color: #e2136e; }
@@ -2319,9 +2315,17 @@ textarea.admin-textarea:focus {
 }
 
 .terms-and-conditions { width: 100%; margin: 1rem 0; color: #333; font-size: 0.85rem; line-height: 1.5; text-align: left; }
-.terms-details { border: 1px solid #efbfd3; border-radius: 10px; background: #fff9fc; overflow: hidden; }
-.terms-details summary { padding: 0.75rem 1rem; color: #a30f56; font-weight: 600; cursor: pointer; }
-.terms-content { max-height: 280px; overflow-y: auto; overscroll-behavior: contain; padding: 1rem; border-top: 1px solid #efbfd3; white-space: pre-line; overflow-wrap: anywhere; }
+.terms-trigger {
+  display: flex; align-items: center; gap: 0.6rem; width: 100%;
+  border: 1px solid #efbfd3; border-radius: 10px;
+  background: #fff9fc; color: #a30f56; font-family: inherit; font-weight: 600;
+  font-size: 0.85rem; padding: 0.75rem 1rem; text-align: left; cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.terms-trigger:hover { background: #fdeef5; border-color: #e2136e; }
+.terms-trigger-icon { width: 20px; height: 20px; flex: 0 0 auto; color: #e2136e; }
+.terms-trigger span { flex: 1 1 auto; }
+.terms-trigger-arrow { width: 16px; height: 16px; flex: 0 0 auto; color: #a30f56; }
 .terms-agreement { display: flex; align-items: flex-start; gap: 0.65rem; margin-top: 0.8rem; cursor: pointer; }
 .terms-agreement input { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; accent-color: #e2136e; }
 .terms-error { color: #b42318; margin-top: 0.4rem; }
@@ -2330,3 +2334,44 @@ textarea.admin-textarea:focus {
 .terms-and-conditions :focus-visible { outline: 3px solid #a30f56; outline-offset: 3px; }
 .download-layout .download-search { flex-wrap: wrap; }
 .download-search .terms-and-conditions { order: 3; flex-basis: 100%; margin: 0.5rem 0 0; }
+
+/* ── Terms and Conditions Modal ── */
+.terms-modal {
+  margin: auto; padding: 0; border: 0; border-radius: 16px;
+  width: min(600px, 92vw); max-height: 85dvh; background: #fff;
+  overflow: hidden;
+}
+.terms-modal[open] { display: flex; flex-direction: column; }
+.terms-modal::backdrop { background: rgba(0, 0, 0, 0.75); }
+.terms-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 1rem 1.25rem; border-bottom: 1px solid #efbfd3; flex: 0 0 auto;
+}
+.terms-modal-header h3 { margin: 0; color: #a30f56; font-size: 1.05rem; font-weight: 700; }
+.terms-modal-close {
+  width: 36px; height: 36px; border: 1px solid #efbfd3; border-radius: 50%;
+  background: #fff; color: #16181d; font-size: 22px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex: 0 0 auto;
+}
+.terms-modal-close:hover { background: #fff9fc; }
+.terms-modal-close:focus-visible { outline: 3px solid #e2136e; outline-offset: 2px; }
+.terms-modal-body {
+  overflow-y: auto; overscroll-behavior: contain; padding: 1rem 1.25rem;
+  white-space: pre-line; overflow-wrap: anywhere; color: #333;
+  font-size: 0.88rem; line-height: 1.55; flex: 1 1 auto;
+}
+.terms-modal-actions {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  padding: 1rem 1.25rem; border-top: 1px solid #efbfd3; flex: 0 0 auto;
+}
+.terms-modal-btn-primary,
+.terms-modal-btn-secondary {
+  padding: 0.65rem 1.4rem; border-radius: 10px; font-family: inherit;
+  font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: opacity .2s, background .2s;
+}
+.terms-modal-btn-primary { background: #e2136e; color: #fff; border: none; }
+.terms-modal-btn-primary:hover { opacity: 0.9; }
+.terms-modal-btn-secondary { background: #fff; color: #e2136e; border: 1px solid #e2136e; }
+.terms-modal-btn-secondary:hover { background: #fff9fc; }
+.terms-modal-btn-primary:focus-visible,
+.terms-modal-btn-secondary:focus-visible { outline: 3px solid #a30f56; outline-offset: 2px; }

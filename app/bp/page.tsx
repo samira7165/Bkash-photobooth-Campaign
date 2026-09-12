@@ -120,13 +120,13 @@ export default function BpPortal() {
                 {!submission.aiUrl && <p className="download-card">{submission.processingStatus === 'failed' ? 'AI generation failed. Available files can still be downloaded.' : 'The generated image is not ready yet. Search again to refresh.'}</p>}
                 <div className="download-item-group"><div className="download-gallery-grid">
                   {[
-                    { label: 'Original Photo', url: submission.originalUrl },
-                    { label: 'AI Generated Image', url: submission.aiUrl },
-                    { label: 'Career PDF', url: submission.comicBookUrl },
-                  ].filter((item) => item.url).map((item) => <div className="download-item" key={item.label}>
-                    {item.label !== 'Career PDF' && <a href={item.url!} target="_blank" rel="noopener noreferrer" aria-label={`Preview ${item.label}`}><img className="download-item-preview" src={item.url!} alt={item.label} loading="lazy" /></a>}
-                    <span className="download-item-label">{item.label}</span>
-                    <a className="download-item-btn" href={`${item.url}?download=1`} download>Download <span aria-hidden="true">↓</span></a>
+                    { key: 'original', label: 'Original Photo', url: submission.originalUrl },
+                    { key: 'ai', label: 'AI Generated Image', url: submission.aiUrl },
+                    { key: 'comic-book', label: 'Comic Book', url: submission.comicBookUrl },
+                  ].filter((item) => item.url).map((item) => <div className="download-item" key={item.key}>
+                    {item.key !== 'comic-book' && <a href={item.url!} target="_blank" rel="noopener noreferrer" aria-label={`Preview ${item.label}`}><img className="download-item-preview" src={item.url!} alt={item.label} loading="lazy" /></a>}
+                    {item.key !== 'comic-book' && <span className="download-item-label">{item.label}</span>}
+                    <a className="download-item-btn" href={`${item.url}?download=1`} download>{item.key === 'comic-book' ? 'Click Here To Download Comic Book' : 'Download'} <span aria-hidden="true">↓</span></a>
                   </div>)}
                 </div></div>
               </article>)}
