@@ -35,6 +35,11 @@ function promptJobWord(job: string): string {
   return PROMPT_JOB_WORD_OVERRIDES[job.trim().toLowerCase()] || job;
 }
 
+/** "a" or "an", matching whichever job word actually reaches the prompt (post-override). */
+function articleFor(word: string): string {
+  return /^[aeiou]/i.test(word) ? 'an' : 'a';
+}
+
 function genderVars(gender: string) {
   return {
     genderWord: gender === 'male' ? 'man' : 'woman',
@@ -131,6 +136,7 @@ export function resolveVariables(template: string, ctx: PromptContext): string {
     '{{name}}': ctx.name,
     '{{gender}}': ctx.gender,
     '{{job}}': promptJob,
+    '{{job_article}}': articleFor(promptJob),
     '{{genderWord}}': g.genderWord,
     '{{genderBoy}}': g.genderBoy,
     '{{genderSubject}}': g.genderSubject,
@@ -166,6 +172,7 @@ function resolveVariablesJsonSafe(template: string, ctx: PromptContext): string 
     '{{name}}': ctx.name,
     '{{gender}}': ctx.gender,
     '{{job}}': promptJob,
+    '{{job_article}}': articleFor(promptJob),
     '{{genderWord}}': g.genderWord,
     '{{genderBoy}}': g.genderBoy,
     '{{genderSubject}}': g.genderSubject,
