@@ -168,10 +168,14 @@ export default function ExperienceCamera({ participantId, careerLabel, onComplet
       <p className="kiosk-sub">Show us your best {careerLabel} look</p>
 
       <div className="cam-box">
+        {/* The live preview is deliberately not mirrored. capture() draws the raw
+            video frame to a canvas, and CSS transforms — all that react-webcam's
+            `mirrored` prop applies — don't carry into drawImage, so a mirrored
+            preview would hand back a photo flipped relative to what the user saw. */}
         {previewUrl ? (
           <img src={previewUrl} alt="Captured preview" className="cam-feed" />
         ) : (
-          <Webcam ref={webcamRef} audio={false} mirrored={facingMode === 'user'}
+          <Webcam ref={webcamRef} audio={false} mirrored={false}
             videoConstraints={{ facingMode, width: 1200, height: 1800 }}
             onUserMedia={checkCameraCount}
             className="cam-feed" />
