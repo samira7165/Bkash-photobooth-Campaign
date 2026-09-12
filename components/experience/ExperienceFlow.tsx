@@ -1,8 +1,8 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getActiveEvent } from '@/services/api';
+import { getActiveEvent, recordQrScan } from '@/services/api';
 import ExperienceLanding from '@/components/experience/ExperienceLanding';
 import ExperienceInfo, { ExperienceInfoData } from '@/components/experience/ExperienceInfo';
 import ExperienceVerifyPhone from '@/components/experience/ExperienceVerifyPhone';
@@ -25,6 +25,18 @@ function ExperienceSteps() {
   useEffect(() => {
     document.body.style.margin = '0';
     document.body.style.overflow = 'hidden';
+  }, []);
+
+  // Count the scan when someone lands from a printed code (?qr=f1). The ref
+  // guard keeps React's development double-invoke of effects from logging the
+  // same arrival twice; each genuine page load still counts once.
+  const qrScanLogged = useRef(false);
+  useEffect(() => {
+    const qrCode = searchParams.get('qr');
+    if (!qrCode || qrScanLogged.current) return;
+    qrScanLogged.current = true;
+    recordQrScan(qrCode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

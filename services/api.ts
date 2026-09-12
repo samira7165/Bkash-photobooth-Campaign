@@ -306,7 +306,27 @@ export interface ParticipantStats {
   totalOtpSent: number;
   otpVerified: number;
   otpFailed: number;
+  totalQrScans: number;
+  byQrCode: { code: string; count: number }[];
   byEvent: { eventId: string; eventName: string; count: number }[];
+}
+
+/**
+ * Record a scan of a printed QR code. Fire-and-forget: a failed beacon must
+ * never interrupt someone trying to use the experience, so callers ignore
+ * the result and this never throws.
+ */
+export async function recordQrScan(code: string): Promise<void> {
+  try {
+    await fetch('/api/qr-scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics only — never surfaced to the visitor */
+  }
 }
 
 export async function getParticipantStats(): Promise<ParticipantStats> {
