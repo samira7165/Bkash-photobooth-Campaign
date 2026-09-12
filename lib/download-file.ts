@@ -62,10 +62,24 @@ export async function serveDownloadFile(
       if (!authorizedStaff && dlSession?.phone !== normalizePhone(image.participant.phone)) {
         return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
       }
-      if (type === 'original') { filepath = image.originalImageUrl; renderedPath = image.renderedOriginalPath; }
+      // "original" now means the AI-generated photo framed with the bKash
+      // pink card (not the raw captured photo) — same source image as "ai",
+      // just a different frame — see lib/queue.ts / lib/participant-queue.ts.
+      if (type === 'original') { filepath = image.aiImageUrl; renderedPath = image.renderedOriginalPath; }
       else if (type === 'ai') { filepath = image.aiImageUrl; renderedPath = image.renderedAiPath; }
-      else filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
-      pdfNameForFilename = 'Comic.pdf';
+      else {
+        // Prefer the PDF uploaded for this participant's event (Admin →
+        // Events); fall back to the generic static one if the event never
+        // got one uploaded, or its file has gone missing on disk.
+        const eventPdfPath = image.participant.event.pdfPath;
+        if (eventPdfPath && fs.existsSync(eventPdfPath)) {
+          filepath = eventPdfPath;
+          pdfNameForFilename = image.participant.event.pdfName || 'Comic.pdf';
+        } else {
+          filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
+          pdfNameForFilename = 'Comic.pdf';
+        }
+      }
       dreamJob = image.participant.career;
       downloadFilenameBase = `dream_career_${sanitize(image.participant.name)}_${sanitize(image.participant.career)}`;
       incrementDownload = async () => {
@@ -83,11 +97,25 @@ export async function serveDownloadFile(
       if (!authorizedStaff && dlSession?.phone !== normalizePhone(bSession.phone)) {
         return NextResponse.json({ message: 'Please verify your phone number first' }, { status: 401 });
       }
-      if (type === 'original') { filepath = bSession.originalImagePath; renderedPath = bSession.renderedOriginalPath; }
+      // "original" now means the AI-generated photo framed with the bKash
+      // pink card (not the raw captured photo) — same source image as "ai",
+      // just a different frame — see lib/queue.ts / lib/participant-queue.ts.
+      if (type === 'original') { filepath = bSession.generatedImagePath; renderedPath = bSession.renderedOriginalPath; }
       else if (type === 'ai') { filepath = bSession.generatedImagePath; renderedPath = bSession.renderedGeneratedPath; }
       else {
-        filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
-        pdfNameForFilename = 'Comic.pdf';
+        // The booth flow has no event of its own (Session isn't tied to an
+        // Event the way Participant is), so it uses whichever event is
+        // currently active (Admin → Events) — same PDF the mobile QR
+        // experience is handing out for that event — falling back to the
+        // static default if there's no active event or it has no PDF.
+        const activeEvent = await prisma.event.findFirst({ where: { isActive: true } });
+        if (activeEvent?.pdfPath && fs.existsSync(activeEvent.pdfPath)) {
+          filepath = activeEvent.pdfPath;
+          pdfNameForFilename = activeEvent.pdfName || 'Comic.pdf';
+        } else {
+          filepath = path.join(process.cwd(), 'public', 'documents', 'Comic.pdf');
+          pdfNameForFilename = 'Comic.pdf';
+        }
       }
       downloadFilenameBase = `dream_job_${sanitize(bSession.name)}_${sanitize(bSession.customJob || bSession.selectedJob || 'job')}`;
       dreamJob = bSession.customJob || bSession.selectedJob || '';

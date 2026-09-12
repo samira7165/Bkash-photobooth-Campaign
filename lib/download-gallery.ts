@@ -29,7 +29,9 @@ export async function getDownloadSubmissions(phone: string, fileBase = '/api/dow
         name: participant.name,
         career: participant.career,
         label: `${participant.career} — ${participant.event.name}`,
-        originalUrl: image.originalImageUrl ? `${fileBase}/mobile/${image.id}/original` : null,
+        // "original" is the AI-generated photo with the bKash frame, so it
+        // depends on generation having finished, same as "ai".
+        originalUrl: image.aiImageUrl ? `${fileBase}/mobile/${image.id}/original` : null,
         aiUrl: image.aiImageUrl ? `${fileBase}/mobile/${image.id}/ai` : null,
         comicBookUrl: `${fileBase}/mobile/${image.id}/comic-book`,
         processingStatus: image.processingStatus,
@@ -44,7 +46,9 @@ export async function getDownloadSubmissions(phone: string, fileBase = '/api/dow
         name: s.name,
         career: s.customJob || s.selectedJob || 'Dream Job',
         label: `${s.customJob || s.selectedJob || 'Dream Job'} — Event Booth`,
-        originalUrl: s.originalImagePath ? `${fileBase}/booth/${s.id}/original` : null,
+        // "original" is the AI-generated photo with the bKash frame, so it
+        // depends on generation having finished, same as "ai".
+        originalUrl: s.generatedImagePath ? `${fileBase}/booth/${s.id}/original` : null,
         aiUrl: s.generatedImagePath ? `${fileBase}/booth/${s.id}/ai` : null,
         comicBookUrl: `${fileBase}/booth/${s.id}/comic-book`,
         processingStatus: mapSessionStatus(s.status),

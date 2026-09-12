@@ -19,25 +19,16 @@ interface Props {
 
 export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
   const [selected, setSelected] = useState('');
-  const [customCareer, setCustomCareer] = useState('');
-  const [showOther, setShowOther] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const pick = (career: string) => {
     setSelected(career);
-    setShowOther(career === 'Other');
-    if (career !== 'Other') setCustomCareer('');
     setError('');
   };
 
   const submit = async () => {
     if (!selected) return;
-
-    if (selected === 'Other' && !customCareer.trim()) {
-      setError('Please type your dream career');
-      return;
-    }
 
     setLoading(true);
     setError('');
@@ -49,10 +40,9 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
         college: info.college.trim() || undefined,
         gender: info.gender,
         career: selected,
-        customCareer: selected === 'Other' ? customCareer.trim() : undefined,
         eventId,
       });
-      onComplete(participantId, selected === 'Other' ? customCareer.trim() : selected);
+      onComplete(participantId, selected);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -93,36 +83,7 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
             {selected === career && <span className="job-check">✓</span>}
           </button>
         ))}
-
-        <button
-          className={`kiosk-job-tile kiosk-job-tile-visual ${selected === 'Other' ? 'selected' : ''}`}
-          aria-pressed={selected === 'Other'}
-          onClick={() => pick('Other')}
-        >
-          <Image
-            className="job-tile-image"
-            src="/careers/other.png"
-            alt=""
-            width={240}
-            height={240}
-            sizes="(max-width: 768px) 30vw, 150px"
-          />
-          <span className="job-tile-label">Other</span>
-          {selected === 'Other' && <span className="job-check">✓</span>}
-        </button>
       </div>
-
-      {showOther && (
-        <div className="kiosk-field" style={{ marginTop: '0.75rem' }}>
-          <input
-            type="text"
-            placeholder="Type your dream career…"
-            value={customCareer}
-            onChange={(e) => setCustomCareer(e.target.value)}
-            autoFocus
-          />
-        </div>
-      )}
 
       {error && <p className="field-err" style={{ textAlign: 'center' }}>{error}</p>}
 

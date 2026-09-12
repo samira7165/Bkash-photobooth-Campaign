@@ -7,6 +7,7 @@ const { NextRequest } = require('next/server');
 
 const phone = '01712345678';
 const photo = path.resolve('public/frames/original-photo.png');
+const activeEventPdf = path.resolve('public/logos/Logo.png');
 const record = { id: 'booth-1', name: 'Customer', phone, selectedJob: 'Doctor', status: 'generated', createdAt: new Date(), originalImagePath: photo, generatedImagePath: photo };
 let downloads = 0;
 let reads = 0;
@@ -21,8 +22,18 @@ const mocks = {
     },
     participant: { findMany: async () => [] },
     image: {
-      findUnique: async () => ({ originalImageUrl: photo, aiImageUrl: photo, id: 'mobile-1', participant: { name: 'Customer', career: 'Doctor', phone } }),
+      findUnique: async () => ({
+        originalImageUrl: photo,
+        aiImageUrl: photo,
+        id: 'mobile-1',
+        participant: { name: 'Customer', career: 'Doctor', phone, event: { pdfPath: photo, pdfName: 'Custom Event Comic.pdf' } },
+      }),
       update: async ({ data }) => { if (data?.downloadCount) downloads++; },
+    },
+    // The booth flow has no event of its own — it borrows whichever event is
+    // currently active, so this only ever gets queried with isActive: true.
+    event: {
+      findFirst: async ({ where }) => where.isActive ? { pdfPath: activeEventPdf, pdfName: 'Active Event Comic.pdf' } : null,
     },
   },
   '@/lib/auth': {
@@ -84,6 +95,21 @@ const request = (url, cookie = '') => new NextRequest('http://localhost' + url, 
       assert.equal(downloads, before + 1);
     }
   }
+  // The comic-book download must use the participant's own event PDF
+  // (Admin -> Events upload), not always fall back to the static default.
+  const comicRes = await bpFile(request('/api/bp/file', 'admin_token=valid-staff'), { params: { source: 'mobile', id: 'mobile-1', type: 'comic-book' } });
+  assert.equal(comicRes.status, 200);
+  const comicBuf = Buffer.from(await comicRes.arrayBuffer());
+  assert.ok(comicBuf.equals(fs.readFileSync(photo)), "Mobile comic-book download must use the participant's event PDF, not the static default");
+
+  // The booth flow has no event of its own — it should borrow the currently
+  // active event's PDF (same one mobile users for that event get), not the
+  // static default, and not the unrelated mobile participant's event PDF.
+  const boothComicRes = await bpFile(request('/api/bp/file', 'admin_token=valid-staff'), { params: { source: 'booth', id: 'booth-1', type: 'comic-book' } });
+  assert.equal(boothComicRes.status, 200);
+  const boothComicBuf = Buffer.from(await boothComicRes.arrayBuffer());
+  assert.ok(boothComicBuf.equals(fs.readFileSync(activeEventPdf)), 'Booth comic-book download must use the active event PDF, not the static default');
+
   assert.equal((await gallery(request('/api/bp/gallery?phone=123', 'admin_token=valid-staff'))).status, 400);
   for (const value of [phone, '+88' + phone]) {
     const response = await gallery(request('/api/bp/gallery?phone=' + encodeURIComponent(value), 'admin_token=valid-staff'));

@@ -12,6 +12,8 @@ import { GEMINI_HOST, isGeminiUrl, isReplicateUrl, isOpenAiUrl } from './ai-prov
 import { buildPrompt, BuiltPrompt } from './prompt-builder';
 import { getDreamJobFrame } from './generated-photo-frame';
 import { OUTPUT_WIDTH, OUTPUT_HEIGHT } from './output-size';
+import { withFileOpenRetry } from './fs-retry';
+import { runRateLimited } from './generation-rate-limiter';
 
 interface GenerateParams {
   originalImagePath: string;
@@ -42,14 +44,16 @@ function isCustomCareer(job: string): boolean {
  * loss across the two encodes.
  */
 async function normalizeOutputImage(filePath: string): Promise<string> {
-  const buffer = await sharp(filePath)
-    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: 'cover', position: 'centre' })
-    .jpeg({ quality: 92, mozjpeg: true })
-    .toBuffer();
-  const normalizedPath = filePath.replace(/\.[^./\\]+$/, '.jpg');
-  fs.writeFileSync(normalizedPath, buffer);
-  if (normalizedPath !== filePath) fs.unlinkSync(filePath);
-  return normalizedPath;
+  return withFileOpenRetry(`normalizeOutputImage(${filePath})`, async () => {
+    const buffer = await sharp(filePath)
+      .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: 'cover', position: 'centre' })
+      .jpeg({ quality: 92, mozjpeg: true })
+      .toBuffer();
+    const normalizedPath = filePath.replace(/\.[^./\\]+$/, '.jpg');
+    fs.writeFileSync(normalizedPath, buffer);
+    if (normalizedPath !== filePath) fs.unlinkSync(filePath);
+    return normalizedPath;
+  });
 }
 
 function isRateLimitError(err: any): boolean {
@@ -188,6 +192,14 @@ export async function generateImage(params: GenerateParams): Promise<string> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const provider = await getNextAiProvider(preferredKind);
 
+    // Each attempt gets its own filename. Windows can transiently lock a
+    // just-written file (see fs-retry.ts) — if every attempt reused the same
+    // path, a retry would overwrite the very file still being locked from
+    // the previous attempt, restarting that contention instead of escaping
+    // it. A fresh name per attempt gives every retry a clean file.
+    const attemptOutputPath = outputPath.replace(/(\.[^./\\]+)$/, `_attempt${attempt}$1`);
+    let finalPath: string | undefined;
+
     if (!provider) {
       const envUrl = process.env.AI_API_URL;
       const envKey = process.env.AI_API_KEY;
@@ -197,30 +209,43 @@ export async function generateImage(params: GenerateParams): Promise<string> {
         return await generateDemoImage(originalImagePath, outputPath, job, name);
       }
 
+      let envRawPath: string;
       try {
         console.log(`[AI] Attempting generation via .env AI_API_URL: ${envUrl}`);
-        let envRawPath: string;
-        if (isGeminiUrl(envUrl)) {
-          envRawPath = await callGeminiApi(envKey, null, built.prompt, originalImagePath, outputPath);
-        } else if (isReplicateUrl(envUrl)) {
-          envRawPath = await callReplicateApi(
-            envUrl,
-            envKey,
-            null,
-            built.prompt,
-            built.negativePrompt,
-            originalImagePath,
-            outputPath,
-          );
-        } else if (isOpenAiUrl(envUrl)) {
-          envRawPath = await callOpenAiApi(envUrl, envKey, null, built.prompt, originalImagePath, outputPath);
-        } else {
-          envRawPath = await callAiApi(envUrl, envKey, null, built, outputPath);
-        }
-        return await normalizeOutputImage(envRawPath);
+        // Only the actual network call needs to respect the provider's
+        // per-minute quota — queue just that, not the local file
+        // post-processing below, so a local retry can't hold up the next
+        // caller's turn in the API queue (see generation-rate-limiter.ts).
+        envRawPath = await runRateLimited(() => {
+          if (isGeminiUrl(envUrl)) {
+            return callGeminiApi(envKey, null, built.prompt, originalImagePath, attemptOutputPath);
+          } else if (isReplicateUrl(envUrl)) {
+            return callReplicateApi(
+              envUrl,
+              envKey,
+              null,
+              built.prompt,
+              built.negativePrompt,
+              originalImagePath,
+              attemptOutputPath,
+            );
+          } else if (isOpenAiUrl(envUrl)) {
+            return callOpenAiApi(envUrl, envKey, null, built.prompt, originalImagePath, attemptOutputPath);
+          } else {
+            return callAiApi(envUrl, envKey, null, built, attemptOutputPath);
+          }
+        });
       } catch (err: any) {
         lastError = err.message;
         console.error(`[AI] .env AI provider failed: ${lastError}`);
+        break;
+      }
+
+      try {
+        return await normalizeOutputImage(envRawPath);
+      } catch (err: any) {
+        lastError = err.message;
+        console.error(`[AI] .env AI provider's local post-processing failed: ${lastError}`);
         break;
       }
     }
@@ -230,52 +255,72 @@ export async function generateImage(params: GenerateParams): Promise<string> {
         `[AI] Generating image via provider "${provider.name}" (priority ${provider.priority}, attempt ${attempt + 1})`,
       );
 
-      let finalPath: string;
-      if (isGeminiUrl(provider.apiUrl)) {
-        finalPath = await callGeminiApi(
-          provider.apiKey,
-          provider.model,
-          built.prompt,
-          originalImagePath,
-          outputPath,
-        );
-      } else if (isReplicateUrl(provider.apiUrl)) {
-        finalPath = await callReplicateApi(
-          provider.apiUrl,
-          provider.apiKey,
-          provider.model,
-          built.prompt,
-          built.negativePrompt,
-          originalImagePath,
-          outputPath,
-        );
-      } else if (isOpenAiUrl(provider.apiUrl)) {
-        finalPath = await callOpenAiApi(
-          provider.apiUrl,
-          provider.apiKey,
-          provider.model,
-          built.prompt,
-          originalImagePath,
-          outputPath,
-        );
-      } else {
-        finalPath = await callAiApi(
-          provider.apiUrl,
-          provider.apiKey,
-          provider.model,
-          built,
-          outputPath,
-        );
-      }
+      // Only the network call needs to respect the provider's per-minute
+      // quota — queue just that, not the local post-processing below (see
+      // normalizeOutputImage further down), so a local file-retry for one
+      // caller can't hold up every other queued caller's turn.
+      finalPath = await runRateLimited(() => {
+        if (isGeminiUrl(provider.apiUrl)) {
+          return callGeminiApi(
+            provider.apiKey,
+            provider.model,
+            built.prompt,
+            originalImagePath,
+            attemptOutputPath,
+          );
+        } else if (isReplicateUrl(provider.apiUrl)) {
+          return callReplicateApi(
+            provider.apiUrl,
+            provider.apiKey,
+            provider.model,
+            built.prompt,
+            built.negativePrompt,
+            originalImagePath,
+            attemptOutputPath,
+          );
+        } else if (isOpenAiUrl(provider.apiUrl)) {
+          return callOpenAiApi(
+            provider.apiUrl,
+            provider.apiKey,
+            provider.model,
+            built.prompt,
+            originalImagePath,
+            attemptOutputPath,
+          );
+        } else {
+          return callAiApi(
+            provider.apiUrl,
+            provider.apiKey,
+            provider.model,
+            built,
+            attemptOutputPath,
+          );
+        }
+      });
 
+      // The provider call itself succeeded — it returned a usable image.
+      // Everything from here on (reading the file back, resizing/compressing
+      // it) is our own local pipeline, and its failures (e.g. the Windows
+      // just-written-file lock in fs-retry.ts) say nothing about whether
+      // this provider is healthy. Mark success now, before that step, so a
+      // purely local hiccup afterward can never be blamed on the provider.
       await markAiProviderSuccess(provider.id);
-      const normalizedPath = await normalizeOutputImage(finalPath);
-      console.log(`[AI] Dream job image successfully generated: ${normalizedPath}`);
-      return normalizedPath;
     } catch (err: any) {
       lastError = err.message;
       console.error(`[AI] Provider "${provider.name}" failed: ${lastError}`);
       await markAiProviderFailed(provider.id, lastError);
+
+      // Each attempt writes to its own filename (see attemptOutputPath
+      // above) so a retry never fights the previous attempt's file lock —
+      // but that means a failed attempt's raw output isn't overwritten by
+      // the next one either, so clean it up here instead of leaving it on
+      // disk forever. Best-effort: the provider may never have written it
+      // at all.
+      if (finalPath) {
+        try {
+          fs.unlinkSync(finalPath);
+        } catch {}
+      }
 
       // A 429 isn't a broken provider — it's the provider correctly telling
       // us to slow down. With a single provider configured, the cooldown
@@ -286,6 +331,23 @@ export async function generateImage(params: GenerateParams): Promise<string> {
         const backoffMs = Math.min(30_000, 2000 * 2 ** attempt);
         console.warn(`[AI] Rate limited — backing off ${backoffMs}ms before retrying`);
         await new Promise((r) => setTimeout(r, backoffMs));
+      }
+      continue;
+    }
+
+    try {
+      const normalizedPath = await normalizeOutputImage(finalPath!);
+      console.log(`[AI] Dream job image successfully generated: ${normalizedPath}`);
+      return normalizedPath;
+    } catch (err: any) {
+      lastError = err.message;
+      console.error(
+        `[AI] Local post-processing failed after provider "${provider.name}" succeeded (not counted as a provider failure): ${lastError}`,
+      );
+      if (finalPath) {
+        try {
+          fs.unlinkSync(finalPath);
+        } catch {}
       }
     }
   }

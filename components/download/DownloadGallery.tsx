@@ -47,7 +47,7 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
 
   const items = [
     { key: 'ai', label: 'AI Generated Image', url: submission.aiUrl },
-    { key: 'original', label: 'Original Photo', url: submission.originalUrl },
+    { key: 'original', label: 'bKash Branded Photo', url: submission.originalUrl },
     { key: 'comic-book', label: 'Comic Book', url: submission.comicBookUrl },
   ].filter((item) => item.url);
 

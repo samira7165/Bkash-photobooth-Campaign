@@ -1,7 +1,6 @@
 import { generateImage } from './ai-generation';
 import { sendXriSms } from './sms-gateway';
 import { renderOriginal, renderBrandedGenerated } from './rendered-photo-cache';
-import { runRateLimited } from './generation-rate-limiter';
 import type { Image, Participant } from '@prisma/client';
 import prisma from './db';
 
@@ -10,8 +9,10 @@ import prisma from './db';
 // Participant/Image tables that back the mobile QR + download-portal
 // journeys. Kept as a separate pipeline (not merged into processNextJob)
 // since the two operate on distinct models with distinct SMS text/links.
-// Shares its rate limiter with lib/queue.ts, since both draw on the same AI
-// provider quota — see lib/generation-rate-limiter.ts.
+// generateImage() itself rate-limits and serializes just the network call to
+// the AI provider, shared with lib/queue.ts since both draw on the same
+// quota — see lib/generation-rate-limiter.ts. Everything else here (local
+// file work, DB updates, SMS) can run concurrently across images.
 
 const globalForParticipantWorker = globalThis as unknown as {
   isRetryingParticipantSms?: boolean;
@@ -26,12 +27,12 @@ async function processParticipantImage(image: Image & { participant: Participant
   const { participant } = image;
 
   try {
-    const aiImageUrl = await runRateLimited(() => generateImage({
+    const aiImageUrl = await generateImage({
       originalImagePath: image.originalImageUrl!,
       job: participant.career,
       gender: participant.gender,
       name: participant.name,
-    }));
+    });
 
     await prisma.image.update({
       where: { id: image.id },
@@ -42,10 +43,14 @@ async function processParticipantImage(image: Image & { participant: Participant
     // this image anyway — so the download portal never has to run Sharp
     // on a live request. Non-fatal: if it fails, download-file.ts falls
     // back to rendering (and caching) on first view instead.
+    //
+    // The "original" download slot puts the bKash pink card frame around
+    // the AI-generated photo (not the raw captured one) — so the user's two
+    // downloads are "AI photo + career frame" and "AI photo + bKash frame".
     try {
       const [renderedOriginalPath, renderedAiPath] = await Promise.all([
-        renderOriginal(image.id, image.originalImageUrl!),
-        renderBrandedGenerated(image.id, aiImageUrl, participant.career),
+        renderOriginal(`mobile_${image.id}`, aiImageUrl),
+        renderBrandedGenerated(`mobile_${image.id}`, aiImageUrl, participant.career),
       ]);
       await prisma.image.update({
         where: { id: image.id },

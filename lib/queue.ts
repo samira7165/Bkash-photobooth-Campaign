@@ -2,18 +2,21 @@ import { generateImage } from './ai-generation';
 import { sendXriSms } from './sms-gateway';
 import { processNextParticipantJob, retryPendingParticipantSms } from './participant-queue';
 import { renderOriginal, renderBrandedGenerated } from './rendered-photo-cache';
-import { runRateLimited } from './generation-rate-limiter';
 import type { Session } from '@prisma/client';
 import prisma from './db';
 
 // ─── Simple DB-backed queue ───
 // No Redis, no Bull — a poller picks up sessions with status "queued" from
-// the sessions table and marks them "processing" right away. The actual AI
-// call is routed through runRateLimited (lib/generation-rate-limiter.ts),
-// which is shared with the participant queue below and enforces the AI
-// provider's real rate limit (e.g. 2/minute) — so however many sessions and
-// participant images get marked "processing" across both pipelines, the
-// provider only ever sees one call at a time, correctly spaced.
+// the sessions table and marks them "processing" right away. Multiple
+// sessions/participant images can be mid-generateImage() at once (the 5s
+// poll tick doesn't wait for the previous one to finish) — but the actual
+// network call to the AI provider is serialized and spaced inside
+// generateImage() itself (lib/generation-rate-limiter.ts, shared with the
+// participant queue below), so the provider only ever sees one request at a
+// time regardless of how many rows are "processing" concurrently. Local
+// per-image work (writing/reading/resizing the file) is deliberately NOT
+// part of that shared lane, so one image's local retry can't hold up
+// everyone else's turn in the API queue.
 
 const globalForWorker = globalThis as unknown as {
   workerStarted?: boolean;
@@ -36,12 +39,12 @@ async function processSession(session: Session) {
   const selectedJob = session.customJob || session.selectedJob || '';
 
   try {
-    const generatedImagePath = await runRateLimited(() => generateImage({
+    const generatedImagePath = await generateImage({
       originalImagePath: session.originalImagePath!,
       job: selectedJob,
       gender: session.gender,
       name: session.name,
-    }));
+    });
 
     await prisma.session.update({
       where: { id: session.id },
@@ -52,10 +55,14 @@ async function processSession(session: Session) {
     // this session anyway — so the download portal never has to run Sharp
     // on a live request. Non-fatal: if it fails, download-file.ts falls
     // back to rendering (and caching) on first view instead.
+    //
+    // The "original" download slot puts the bKash pink card frame around
+    // the AI-generated photo (not the raw captured one) — so the user's two
+    // downloads are "AI photo + career frame" and "AI photo + bKash frame".
     try {
       const [renderedOriginalPath, renderedGeneratedPath] = await Promise.all([
-        renderOriginal(session.id, session.originalImagePath!),
-        renderBrandedGenerated(session.id, generatedImagePath, selectedJob),
+        renderOriginal(`booth_${session.id}`, generatedImagePath),
+        renderBrandedGenerated(`booth_${session.id}`, generatedImagePath, selectedJob),
       ]);
       await prisma.session.update({
         where: { id: session.id },
