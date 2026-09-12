@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
-import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import { isValidPhone, normalizePhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { checkAlreadyParticipated, requestParticipantOtp } from '@/services/api';
 
 export interface ExperienceInfoData {
@@ -31,13 +31,32 @@ export default function ExperienceInfo({ onComplete }: Props) {
   const handlePhoneChange = (phone: string) => {
     setInfo((prev) => ({ ...prev, phone }));
     setAlreadyParticipated(false);
-    if (checkTimer.current) clearTimeout(checkTimer.current);
 
+    // Too many digits is unambiguous the moment it happens — flag it
+    // immediately instead of waiting for blur/submit. Too few is only
+    // checked on blur (below), since the user is still mid-typing here.
+    const digitCount = normalizePhone(phone).replace(/\D/g, '').length;
+    setErrors((prev) => {
+      if (digitCount > 11) return { ...prev, phone: PHONE_VALIDATION_MESSAGE };
+      if (prev.phone === PHONE_VALIDATION_MESSAGE) {
+        const { phone: _drop, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+
+    if (checkTimer.current) clearTimeout(checkTimer.current);
     if (!isValidPhone(phone)) return;
     checkTimer.current = setTimeout(async () => {
       const participated = await checkAlreadyParticipated(phone).catch(() => false);
       setAlreadyParticipated(participated);
     }, PHONE_CHECK_DEBOUNCE_MS);
+  };
+
+  const handlePhoneBlur = () => {
+    if (info.phone.trim() && !isValidPhone(info.phone)) {
+      setErrors((prev) => ({ ...prev, phone: PHONE_VALIDATION_MESSAGE }));
+    }
   };
 
   useEffect(() => () => { if (checkTimer.current) clearTimeout(checkTimer.current); }, []);
@@ -93,7 +112,7 @@ export default function ExperienceInfo({ onComplete }: Props) {
       <div className="kiosk-field">
         <label>Mobile Number <span className="req">*</span></label>
         <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
-          onChange={(e) => handlePhoneChange(e.target.value)} />
+          onChange={(e) => handlePhoneChange(e.target.value)} onBlur={handlePhoneBlur} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
         {alreadyParticipated && (
           <span className="field-err">This number has already been used to submit a picture. Check your SMS for the link to get your Future Career image.</span>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
-import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import { isValidPhone, normalizePhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { createSession } from '@/services/api';
 
 interface Props {
@@ -14,6 +14,29 @@ export default function StepInfo({ onComplete }: Props) {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+
+  const handlePhoneChange = (phone: string) => {
+    setInfo({ ...info, phone });
+
+    // Too many digits is unambiguous the moment it happens — flag it
+    // immediately instead of waiting for blur/submit. Too few is only
+    // checked on blur (below), since the user is still mid-typing here.
+    const digitCount = normalizePhone(phone).replace(/\D/g, '').length;
+    setErrors((prev) => {
+      if (digitCount > 11) return { ...prev, phone: PHONE_VALIDATION_MESSAGE };
+      if (prev.phone === PHONE_VALIDATION_MESSAGE) {
+        const { phone: _drop, ...rest } = prev;
+        return rest;
+      }
+      return prev;
+    });
+  };
+
+  const handlePhoneBlur = () => {
+    if (info.phone.trim() && !isValidPhone(info.phone)) {
+      setErrors((prev) => ({ ...prev, phone: PHONE_VALIDATION_MESSAGE }));
+    }
+  };
 
   const handleSubmit = async () => {
     const errs: Record<string, string> = {};
@@ -69,7 +92,7 @@ export default function StepInfo({ onComplete }: Props) {
       <div className="kiosk-field">
         <label>Phone Number <span className="req">*</span></label>
         <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
-          onChange={(e) => setInfo({ ...info, phone: e.target.value })} />
+          onChange={(e) => handlePhoneChange(e.target.value)} onBlur={handlePhoneBlur} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
       </div>
 
