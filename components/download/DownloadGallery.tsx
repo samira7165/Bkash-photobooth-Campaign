@@ -14,6 +14,16 @@ function triggerDownload(url: string) {
 
 function SubmissionCard({ submission, onComicDownload }: { submission: DownloadSubmission; onComicDownload: () => void }) {
   const [downloadingAll, setDownloadingAll] = useState(false);
+  const previewRef = useRef<HTMLDialogElement>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+  useEffect(() => {
+    const dialog = previewRef.current;
+    if (!dialog) return;
+    const handleClose = () => setPreviewOpen(false);
+    dialog.addEventListener('close', handleClose);
+    return () => dialog.removeEventListener('close', handleClose);
+  }, []);
 
   const downloadAll = async () => {
     const urls = [submission.originalUrl, submission.aiUrl, submission.comicBookUrl].filter(Boolean) as string[];
@@ -56,23 +66,48 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
       <div className="download-gallery-grid">
         {items.map((item) => (
           <div className="download-item" key={item.key}>
-            <img
-              className="download-item-preview"
-              src={item.key === 'comic-book' ? '/documents/Comic-preview.jpg' : item.url!}
-              alt={item.key === 'comic-book' ? 'Comic book preview' : item.label}
-            />
+            {item.key === 'comic-book' ? (
+              <a
+                className="download-comic-cta-card"
+                href={`${item.url}?download=1`}
+                download
+                onClick={(event) => {
+                  event.preventDefault();
+                  triggerDownload(`${item.url}?download=1`);
+                  onComicDownload();
+                }}
+              >
+                <span className="download-comic-burst" aria-hidden="true" />
+                <span className="download-comic-badge" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M7 3.5h7l4.5 4.5V20a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                    <path d="M14 3.5V8h4.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+                    <path d="M12 11.5v5m0 0-2-2m2 2 2-2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+                <span className="download-comic-cta-text">Click Here To<br />Download Comic Book</span>
+                <span className="download-comic-cta-arrow" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M12 5v13m0 0-5-5m5 5 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              </a>
+            ) : (
+              <img className="download-item-preview" src={item.url!} alt={item.label} />
+            )}
             {item.key !== 'comic-book' && <span className="download-item-label">{item.label}</span>}
             {item.key === 'comic-book' && (
-              <a
+              <button
+                type="button"
                 className="download-item-btn download-preview-btn"
-                href={item.url!}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Preview comic (opens in a new tab)"
-                onClick={onComicDownload}
+                aria-label="Preview comic book"
+                onClick={() => {
+                  setPreviewOpen(true);
+                  previewRef.current?.showModal();
+                }}
               >
                 Preview PDF
-              </a>
+              </button>
             )}
             <a
               className="download-item-btn"
@@ -84,7 +119,7 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
                 onComicDownload();
               } : undefined}
             >
-              <span>{item.key === 'comic-book' ? 'Click Here To Download Comic Book' : 'Download'}</span>
+              <span>{item.key === 'comic-book' ? 'Download PDF' : 'Download'}</span>
               <span aria-hidden="true">↓</span>
             </a>
           </div>
@@ -94,6 +129,51 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
       <button className="download-btn-primary download-all-btn" onClick={downloadAll} disabled={downloadingAll}>
         {downloadingAll ? 'Downloading…' : 'Download All'}
       </button>
+
+      {submission.comicBookUrl && (
+        <dialog
+          ref={previewRef}
+          className="pdf-preview-modal"
+          aria-label="Comic book preview"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) previewRef.current?.close();
+          }}
+        >
+          <div className="pdf-preview-modal-header">
+            <h3>Comic Book Preview</h3>
+            <button
+              type="button"
+              className="pdf-preview-modal-close"
+              aria-label="Close preview"
+              onClick={() => previewRef.current?.close()}
+            >
+              &times;
+            </button>
+          </div>
+          {previewOpen && (
+            <iframe
+              className="pdf-preview-modal-frame"
+              src={submission.comicBookUrl}
+              title="Comic book PDF preview"
+            />
+          )}
+          <div className="pdf-preview-modal-actions">
+            <a
+              className="download-item-btn"
+              href={`${submission.comicBookUrl}?download=1`}
+              download
+              onClick={(event) => {
+                event.preventDefault();
+                triggerDownload(`${submission.comicBookUrl}?download=1`);
+                onComicDownload();
+              }}
+            >
+              <span>Click Here To Download Comic Book</span>
+              <span aria-hidden="true">↓</span>
+            </a>
+          </div>
+        </dialog>
+      )}
     </div>
   );
 }
