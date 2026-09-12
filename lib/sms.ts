@@ -124,7 +124,7 @@ export async function sendOtp(phone: string): Promise<void> {
     },
   });
 
-  await sendXriSms(phone, `[Dream Career]Your verification code is: ${otpCode}. It expires in ${ttlMinutes} minutes.`);
+  await sendXriSms(phone, `[Dream Career] Your verification code is: ${otpCode}. It expires in ${ttlMinutes} minutes.`);
 }
 
 export async function verifyOtp(phone: string, otpCode: string): Promise<boolean> {
