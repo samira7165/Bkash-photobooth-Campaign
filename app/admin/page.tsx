@@ -93,7 +93,8 @@ const JOB_OPTIONS = [
 
 // Mirrors lib/prompt-builder.ts's getAvailableVariables() — duplicated here
 // (rather than imported) since that file pulls in the Prisma client, which
-// cannot be bundled into this client component.
+// cannot be bundled into this client component. Used for the "Default"
+// (12 known careers, Gemini) template — unaffected by the custom-job list below.
 function getPromptVariables(): { variable: string; description: string; example: string }[] {
   return [
     { variable: '{{name}}', description: "User's name", example: 'Samira' },
@@ -105,12 +106,49 @@ function getPromptVariables(): { variable: string; description: string; example:
     { variable: '{{genderTitle}}', description: 'Mr or Ms', example: 'Mr / Ms' },
     { variable: '{{job}}', description: 'Selected dream job', example: 'Doctor' },
     { variable: '{{job_lower}}', description: 'Job in lowercase', example: 'doctor' },
+    { variable: '{{job_uppercase}}', description: 'Job in uppercase', example: 'DOCTOR' },
     { variable: '{{job_clothing}}', description: 'Specific attire for the job', example: 'white doctor coat with stethoscope' },
     { variable: '{{job_surroundings}}', description: 'Specific environment for the job', example: 'modern hospital clinic' },
+    { variable: '{{output_width}}', description: 'Fixed output canvas width in pixels', example: '1200' },
+    { variable: '{{output_height}}', description: 'Fixed output canvas height in pixels', example: '1800' },
     { variable: '{{face_preservation_instruction}}', description: 'Strict instruction to keep user face and identity unchanged', example: 'Preserve the exact same person, face...' },
     { variable: '{{prompt}}', description: 'Resolved main prompt (request body only)', example: '' },
     { variable: '{{negativePrompt}}', description: 'Resolved negative prompt (request body only)', example: '' },
     { variable: '{{imageBase64}}', description: 'Base64 encoded user photo (request body only)', example: '' },
+  ];
+}
+
+// Variable reference shown specifically when editing the custom "Other"
+// career template (OpenAI path). Career-descriptive ones (tools, pose,
+// tagline, features, bottom statement, color theme, frame, typography) are
+// NOT literal substitution tokens — custom jobs are unbounded free text, so
+// there's no lookup table for them. The template instead describes them in
+// prose asking the model to compose each one based on {{job}}; typing the
+// {{...}} form of these into the prompt text will NOT resolve to anything.
+function getCustomJobPromptVariables(): { variable: string; description: string; example: string }[] {
+  return [
+    { variable: '{{name}}', description: "User's name", example: 'Samira' },
+    { variable: '{{gender}}', description: 'Raw gender value', example: 'male / female' },
+    { variable: '{{genderWord}}', description: 'Man or Woman', example: 'man / woman' },
+    { variable: '{{job}}', description: 'Custom career as typed by the user', example: 'Chef, Architect, Astronaut' },
+    { variable: '{{job_uppercase}}', description: 'Career in uppercase — for headline text', example: 'CHEF' },
+    { variable: '{{job_lower}}', description: 'Career in lowercase', example: 'chef' },
+    { variable: '{{job_clothing}}', description: 'Generic professional attire description', example: 'appropriate professional chef uniform, attire, and gear' },
+    { variable: '{{job_surroundings}}', description: 'Generic professional environment description', example: 'a realistic, authentic professional workplace setting for a chef' },
+    { variable: '{{professional_tools}}', description: 'AI-composed, not a literal token — describe in prose: "equip them with tools a real {{job}} would use"', example: 'stethoscope, blueprint, camera — decided per job by the AI' },
+    { variable: '{{job_pose}}', description: 'AI-composed, not a literal token — describe in prose: "choose a pose that fits a {{job}}"', example: 'holding a whisk, standing at a drafting table — decided by the AI' },
+    { variable: '{{career_tagline}}', description: 'AI-composed, not a literal token — ask the model to "compose an original 3-6 word tagline for {{job}}"', example: 'HEAL TODAY. SAVE TOMORROW.' },
+    { variable: '{{feature_1}}', description: 'AI-composed, not a literal token — one of three short highlight phrases the model writes for {{job}}', example: 'MASTER YOUR SKILLS' },
+    { variable: '{{feature_2}}', description: 'AI-composed, not a literal token', example: 'CREATE NEW POSSIBILITIES' },
+    { variable: '{{feature_3}}', description: 'AI-composed, not a literal token', example: 'TURN PASSION INTO SUCCESS' },
+    { variable: '{{bottom_statement_line_1}}', description: 'AI-composed, not a literal token — two-line motivational statement for {{job}}', example: 'TURN PASSION' },
+    { variable: '{{bottom_statement_line_2}}', description: 'AI-composed, not a literal token', example: 'INTO IMPACT' },
+    { variable: '{{career_color_theme}}', description: 'AI-composed, not a literal token — ask the model to "pick a palette that fits {{job}}"', example: 'clean medical blue and white for a doctor' },
+    { variable: '{{frame_style}}', description: 'AI-composed, not a literal token — describe the frame directly in the FRAME section of the prompt', example: 'double-line white ornamental frame with corner ornaments' },
+    { variable: '{{typography_style}}', description: 'AI-composed, not a literal token — describe type treatment directly where each text element is introduced', example: 'bold uppercase sans-serif with drop shadow' },
+    { variable: '{{face_preservation_instruction}}', description: 'Strict instruction to keep user face and identity unchanged', example: 'Preserve the exact same person, face...' },
+    { variable: '{{imageBase64}}', description: 'Base64 encoded user photo (request body only)', example: '' },
+    { variable: '{{negativePrompt}}', description: 'Resolved negative prompt (request body only)', example: '' },
   ];
 }
 
@@ -227,6 +265,7 @@ type ConfirmAction =
 interface PromptFormState {
   name: string;
   isDefault: boolean;
+  isDefaultForCustom: boolean;
   promptText: string;
   negativePrompt: string;
   requestBodyTemplate: string;
@@ -236,6 +275,7 @@ interface PromptFormState {
 const EMPTY_PROMPT_FORM: PromptFormState = {
   name: '',
   isDefault: false,
+  isDefaultForCustom: false,
   promptText: '',
   negativePrompt: '',
   requestBodyTemplate: '',
@@ -691,6 +731,7 @@ export default function AdminPage() {
     setPromptForm({
       name: t.name,
       isDefault: t.isDefault,
+      isDefaultForCustom: t.isDefaultForCustom,
       promptText: t.promptText,
       negativePrompt: t.negativePrompt || '',
       requestBodyTemplate: t.requestBodyTemplate || '',
@@ -739,6 +780,7 @@ export default function AdminPage() {
       const payload: PromptTemplateInput = {
         name: promptForm.name.trim(),
         isDefault: promptForm.isDefault,
+        isDefaultForCustom: promptForm.isDefaultForCustom,
         promptText: promptForm.promptText.trim(),
         negativePrompt: showNegativePrompt ? promptForm.negativePrompt.trim() : '',
         requestBodyTemplate: showRequestBody ? promptForm.requestBodyTemplate.trim() : '',
@@ -1360,7 +1402,17 @@ export default function AdminPage() {
                     checked={promptForm.isDefault}
                     onChange={(e) => setPromptForm((f) => ({ ...f, isDefault: e.target.checked }))}
                   />
-                  Set as Default
+                  Set as Default (12 known careers — Gemini)
+                </label>
+              </div>
+              <div className="field admin-checkbox-field">
+                <label className="admin-checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={promptForm.isDefaultForCustom}
+                    onChange={(e) => setPromptForm((f) => ({ ...f, isDefaultForCustom: e.target.checked }))}
+                  />
+                  Set as Default for Custom &quot;Other&quot; Careers (OpenAI)
                 </label>
               </div>
 
@@ -1379,9 +1431,11 @@ export default function AdminPage() {
               </div>
 
               <div className="admin-variables-panel">
-                <div className="admin-variables-title">Available Variables</div>
+                <div className="admin-variables-title">
+                  Available Variables {promptForm.isDefaultForCustom && '(Custom "Other" Career)'}
+                </div>
                 <div className="admin-variables-grid">
-                  {getPromptVariables().map((v) => (
+                  {(promptForm.isDefaultForCustom ? getCustomJobPromptVariables() : getPromptVariables()).map((v) => (
                     <div className="admin-variable-item" key={v.variable}>
                       <code className="admin-variable-code">{v.variable}</code>
                       <span className="admin-variable-desc">{v.description}</span>
@@ -2030,6 +2084,7 @@ function PromptsSection({
           <div className="admin-campaign-top">
             <span className="admin-campaign-name">{t.name}</span>
             {t.isDefault && <span className="admin-default-badge">DEFAULT</span>}
+            {t.isDefaultForCustom && <span className="admin-default-badge">DEFAULT (CUSTOM)</span>}
           </div>
           <div className="admin-campaign-desc">
             {t.promptText.length > 100 ? `${t.promptText.slice(0, 100)}…` : t.promptText}

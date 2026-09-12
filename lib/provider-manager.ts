@@ -1,4 +1,5 @@
 import { AiProvider, SmsProvider } from '@prisma/client';
+import { ProviderKind, providerKind } from './ai-provider-kind';
 import prisma from './db';
 
 const COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
@@ -11,7 +12,15 @@ function isOnCooldown(p: { failCount: number; lastFailAt: Date | null }): boolea
 
 // ─── AI Providers ───
 
-export async function getNextAiProvider(): Promise<AiProvider | null> {
+/**
+ * Picks the next AI provider to try, in priority order, skipping ones on
+ * cooldown. When `preferredKind` is given (Gemini for the 12 known careers,
+ * OpenAI for custom "Other" jobs — see lib/ai-generation.ts), providers of
+ * that kind are tried first; providers of any other kind are only used as a
+ * last resort, so the app still attempts generation instead of failing
+ * outright if the preferred kind isn't configured yet.
+ */
+export async function getNextAiProvider(preferredKind?: ProviderKind): Promise<AiProvider | null> {
   const providers = await prisma.aiProvider.findMany({
     where: { isActive: true },
     orderBy: { priority: 'asc' },
@@ -19,15 +28,24 @@ export async function getNextAiProvider(): Promise<AiProvider | null> {
 
   if (providers.length === 0) return null;
 
-  const available = providers.filter((p) => !isOnCooldown(p));
-  if (available.length > 0) return available[0];
+  const pools = preferredKind
+    ? [
+        providers.filter((p) => providerKind(p.apiUrl) === preferredKind),
+        providers.filter((p) => providerKind(p.apiUrl) !== preferredKind),
+      ]
+    : [providers];
 
-  // All on cooldown — reset them and retry the highest priority one
+  for (const pool of pools) {
+    const available = pool.filter((p) => !isOnCooldown(p));
+    if (available.length > 0) return available[0];
+  }
+
+  // Everything is on cooldown — reset them all and retry the best match.
   await prisma.aiProvider.updateMany({
     where: { id: { in: providers.map((p) => p.id) } },
     data: { failCount: 0, lastFailAt: null },
   });
-  return providers[0];
+  return pools[0][0] || providers[0];
 }
 
 export async function markAiProviderFailed(id: string, error: string): Promise<void> {

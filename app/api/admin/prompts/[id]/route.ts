@@ -31,7 +31,7 @@ export async function PUT(
   return withAdminAuth(req, async (req) => {
     try {
       const body = await req.json();
-      const { name, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
+      const { name, isDefault, isDefaultForCustom, promptText, negativePrompt, requestBodyTemplate, notes } = body;
 
       if (name !== undefined && !name.trim()) {
         return NextResponse.json({ message: 'name cannot be empty' }, { status: 400 });
@@ -53,12 +53,19 @@ export async function PUT(
           data: { isDefault: false },
         });
       }
+      if (isDefaultForCustom === true) {
+        await prisma.promptTemplate.updateMany({
+          where: { isDefaultForCustom: true, NOT: { id: params.id } },
+          data: { isDefaultForCustom: false },
+        });
+      }
 
       const updated = await prisma.promptTemplate.update({
         where: { id: params.id },
         data: {
           ...(name !== undefined && { name: name.trim() }),
           ...(isDefault !== undefined && { isDefault: !!isDefault }),
+          ...(isDefaultForCustom !== undefined && { isDefaultForCustom: !!isDefaultForCustom }),
           ...(promptText !== undefined && { promptText: promptText.trim() }),
           ...(negativePrompt !== undefined && { negativePrompt: negativePrompt?.trim() || null }),
           ...(requestBodyTemplate !== undefined && {
@@ -92,6 +99,12 @@ export async function DELETE(
       if (existing.isDefault) {
         return NextResponse.json(
           { message: 'Cannot delete the default template. Set another as default first.' },
+          { status: 400 },
+        );
+      }
+      if (existing.isDefaultForCustom) {
+        return NextResponse.json(
+          { message: 'Cannot delete the default template for custom careers. Set another as default first.' },
           { status: 400 },
         );
       }

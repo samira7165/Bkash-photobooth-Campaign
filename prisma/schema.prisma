@@ -82,6 +82,11 @@ model PromptTemplate {
   id                  String    @id @default(uuid())
   name                String    @db.VarChar(100)
   isDefault           Boolean   @default(false)
+  // Used instead of isDefault for custom "Other" careers (routed to OpenAI,
+  // which has no pre-made frame artwork to composite afterward) — separate
+  // from the 12 known careers' default template (Gemini, framed with PNG
+  // overlays). Falls back to isDefault, then a hardcoded prompt, if unset.
+  isDefaultForCustom  Boolean   @default(false)
   promptText          String    @db.Text
   negativePrompt      String?   @db.Text
   requestBodyTemplate String?   @db.Text

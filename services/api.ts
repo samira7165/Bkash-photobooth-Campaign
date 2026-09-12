@@ -562,6 +562,7 @@ export interface PromptTemplate {
   id: string;
   name: string;
   isDefault: boolean;
+  isDefaultForCustom: boolean;
   promptText: string;
   negativePrompt?: string | null;
   requestBodyTemplate?: string | null;
@@ -573,6 +574,7 @@ export interface PromptTemplate {
 export interface PromptTemplateInput {
   name: string;
   isDefault?: boolean;
+  isDefaultForCustom?: boolean;
   promptText: string;
   negativePrompt?: string;
   requestBodyTemplate?: string;

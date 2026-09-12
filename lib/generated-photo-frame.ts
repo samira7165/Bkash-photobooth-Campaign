@@ -1,20 +1,21 @@
 import sharp from 'sharp';
 import path from 'path';
 import { promises as fs } from 'fs';
+import { OUTPUT_WIDTH, OUTPUT_HEIGHT } from './output-size';
 
 const FRAMES: Record<string, string> = {
   doctor: 'doctor.png',
   engineer: 'engineer.png',
   footballer: 'Footballer.png',
-  'professional gamer': 'gamer.png',
-  gamer: 'gamer.png',
+  'professional gamer': 'professional_gamer.png',
+  gamer: 'professional_gamer.png',
   journalist: 'Journalist.png',
   lawyer: 'lawyer.png',
-  military: 'military-Photoroom.png',
-  painter: 'painter.png',
+  military: 'military.png',
+  painter: 'future_painter.png',
   photographer: 'Photographer.png',
   pilot: 'pilot.png',
-  scientist: 'scientist.png',
+  scientist: 'future_Scientist.png',
   singer: 'singer.png',
 };
 
@@ -28,12 +29,11 @@ export async function frameGeneratedPhoto(photoPath: string, job: string): Promi
   const framePath = getDreamJobFrame(job);
   if (!framePath) return fs.readFile(photoPath);
 
-  const frame = await fs.readFile(framePath);
-  const { width, height } = await sharp(frame).metadata();
+  const frame = await sharp(framePath).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT).toBuffer();
   // Fit the photo beneath the complete artwork without stretching the frame.
   return sharp(photoPath)
     .rotate()
-    .resize(width, height, { fit: 'cover', position: 'centre' })
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: 'cover', position: 'centre' })
     .composite([{ input: frame, left: 0, top: 0 }])
     .png()
     .toBuffer();

@@ -10,7 +10,27 @@ const DEFAULT_TEMPLATE = {
   negativePrompt:
     'blurry, low quality, distorted, deformed, ugly, bad anatomy, bad hands, extra fingers, missing fingers, watermark, text, signature, logo, cartoon, anime, illustration, painting, drawing',
   requestBodyTemplate: null,
-  notes: 'Default template. Customize as needed.',
+  notes: 'Default template, used for the 12 known careers (Gemini). Customize as needed.',
+};
+
+// Used for custom "Other" careers (routed to OpenAI — no pre-made frame PNG
+// exists for an arbitrary typed career, so the prompt asks the model to draw
+// its own frame border directly into the image).
+const DEFAULT_CUSTOM_TEMPLATE = {
+  name: 'Default Custom Career Portrait (OpenAI)',
+  isDefaultForCustom: true,
+  promptText:
+    'A high quality photorealistic portrait of the exact same person from the input photo. ' +
+    '{{face_preservation_instruction}} Change their clothing and outfit into: {{job_clothing}}. ' +
+    'Change the background and surroundings into: {{job_surroundings}}. Seamless composition, ' +
+    'natural lighting, professional photography, crisp focus, 8k resolution, highly detailed. ' +
+    "Add a stylish decorative photo-frame border around the entire edge of the image, thematically " +
+    "matching the {{job}} career, like a framed portrait card — the frame must sit within the outer " +
+    "5-8% margin of the image and must not cover the subject's face.",
+  negativePrompt:
+    'different face, changed face, altered facial features, distorted eyes, bad anatomy, deformed hands, cartoon, 3d render, anime, illustration, painting, blurry, low resolution, artifacts, watermark, text, signature',
+  requestBodyTemplate: null,
+  notes: 'Default template for custom "Other" careers (OpenAI path). Customize as needed.',
 };
 
 export async function GET(req: NextRequest) {
@@ -18,11 +38,11 @@ export async function GET(req: NextRequest) {
     try {
       const count = await prisma.promptTemplate.count();
       if (count === 0) {
-        await prisma.promptTemplate.create({ data: DEFAULT_TEMPLATE });
+        await prisma.promptTemplate.createMany({ data: [DEFAULT_TEMPLATE, DEFAULT_CUSTOM_TEMPLATE] });
       }
 
       const templates = await prisma.promptTemplate.findMany({
-        orderBy: [{ isDefault: 'desc' }, { updatedAt: 'desc' }],
+        orderBy: [{ isDefault: 'desc' }, { isDefaultForCustom: 'desc' }, { updatedAt: 'desc' }],
       });
 
       return NextResponse.json(templates);
@@ -37,7 +57,7 @@ export async function POST(req: NextRequest) {
   return withAdminAuth(req, async (req) => {
     try {
       const body = await req.json();
-      const { name, isDefault, promptText, negativePrompt, requestBodyTemplate, notes } = body;
+      const { name, isDefault, isDefaultForCustom, promptText, negativePrompt, requestBodyTemplate, notes } = body;
 
       if (!name?.trim() || !promptText?.trim()) {
         return NextResponse.json({ message: 'name and promptText are required' }, { status: 400 });
@@ -57,11 +77,18 @@ export async function POST(req: NextRequest) {
           data: { isDefault: false },
         });
       }
+      if (isDefaultForCustom) {
+        await prisma.promptTemplate.updateMany({
+          where: { isDefaultForCustom: true },
+          data: { isDefaultForCustom: false },
+        });
+      }
 
       const template = await prisma.promptTemplate.create({
         data: {
           name: name.trim(),
           isDefault: !!isDefault,
+          isDefaultForCustom: !!isDefaultForCustom,
           promptText: promptText.trim(),
           negativePrompt: negativePrompt?.trim() || null,
           requestBodyTemplate: requestBodyTemplate?.trim() || null,

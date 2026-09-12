@@ -8,7 +8,10 @@ import {
   markAiProviderFailed,
   markAiProviderSuccess,
 } from './provider-manager';
+import { GEMINI_HOST, isGeminiUrl, isReplicateUrl, isOpenAiUrl } from './ai-provider-kind';
 import { buildPrompt, BuiltPrompt } from './prompt-builder';
+import { getDreamJobFrame } from './generated-photo-frame';
+import { OUTPUT_WIDTH, OUTPUT_HEIGHT } from './output-size';
 
 interface GenerateParams {
   originalImagePath: string;
@@ -17,19 +20,36 @@ interface GenerateParams {
   name?: string;
 }
 
-const GEMINI_HOST = 'generativelanguage.googleapis.com';
 const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash-exp-image-generation';
 
-function isGeminiUrl(apiUrl: string): boolean {
-  return apiUrl.includes(GEMINI_HOST);
+// Custom "Other" careers get routed to a different provider (OpenAI) and a
+// different admin-editable prompt template (isDefaultForCustom in
+// lib/prompt-builder.ts), asking it to bake in a decorative frame — since
+// there's no pre-made frame PNG to composite afterward the way there is for
+// the 12 known careers. See lib/generated-photo-frame.ts's FRAMES map.
+function isCustomCareer(job: string): boolean {
+  return getDreamJobFrame(job) === null;
 }
 
-function isReplicateUrl(apiUrl: string): boolean {
-  return apiUrl.includes('replicate.com');
-}
-
-function isOpenAiUrl(apiUrl: string): boolean {
-  return apiUrl.includes('api.openai.com');
+/**
+ * Normalizes any provider's output to the fixed OUTPUT_WIDTH x OUTPUT_HEIGHT
+ * canvas. Stored as JPEG, not PNG — this file sits in uploads/generated/ as
+ * the raw generation artifact (before frame/logo compositing), and a
+ * lossless 1200x1800 PNG of a photo is typically several MB for no visual
+ * benefit here: it still gets decoded, recomposited, and re-encoded to JPEG
+ * one more time at delivery (lib/generated-photo-logo.ts), so quality is
+ * kept high (92) at this stage specifically to avoid compounding visible
+ * loss across the two encodes.
+ */
+async function normalizeOutputImage(filePath: string): Promise<string> {
+  const buffer = await sharp(filePath)
+    .resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: 'cover', position: 'centre' })
+    .jpeg({ quality: 92, mozjpeg: true })
+    .toBuffer();
+  const normalizedPath = filePath.replace(/\.[^./\\]+$/, '.jpg');
+  fs.writeFileSync(normalizedPath, buffer);
+  if (normalizedPath !== filePath) fs.unlinkSync(filePath);
+  return normalizedPath;
 }
 
 function isRateLimitError(err: any): boolean {
@@ -66,10 +86,10 @@ async function generateDemoImage(
   job: string,
   userName?: string,
 ): Promise<string> {
-  const original = await sharp(sourcePath).resize(800, 800, { fit: 'cover' }).toBuffer();
+  const original = await sharp(sourcePath).resize(OUTPUT_WIDTH, OUTPUT_HEIGHT, { fit: 'cover' }).toBuffer();
   const meta = await sharp(original).metadata();
-  const width = meta.width || 800;
-  const height = meta.height || 800;
+  const width = meta.width || OUTPUT_WIDTH;
+  const height = meta.height || OUTPUT_HEIGHT;
 
   const escapedJob = job.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').toUpperCase();
   const escapedUser = userName
@@ -108,8 +128,13 @@ async function generateDemoImage(
 
 /**
  * Generate the user's dream job photo via a direct image-to-image pipeline:
- * Takes the user's captured photo and prompt, and transforms the user's
- * clothes and surroundings into their dream job while preserving their real face.
+ * takes the user's captured photo and prompt, and transforms the user's
+ * clothes and surroundings into their dream job while preserving their real
+ * face. Routes to Gemini for the 12 known careers (which have their own
+ * frame artwork composited on afterward) and to OpenAI for custom "Other"
+ * careers (whose prompt asks the model to bake in its own frame, since
+ * there's no artwork to overlay). Output is always normalized to
+ * OUTPUT_WIDTH x OUTPUT_HEIGHT regardless of provider.
  */
 export async function generateImage(params: GenerateParams): Promise<string> {
   const { originalImagePath, job, gender, name } = params;
@@ -132,6 +157,14 @@ export async function generateImage(params: GenerateParams): Promise<string> {
   const imageBuffer = fs.readFileSync(originalImagePath);
   const base64Image = imageBuffer.toString('base64');
 
+  // Custom "Other" careers have no pre-made frame PNG (lib/generated-photo-frame.ts
+  // only covers the 12 known careers), so the frame has to come from the model
+  // itself instead of a code-composited overlay — and Gemini is tuned for the
+  // known-career prompts, so custom jobs go to OpenAI instead, using a
+  // separate admin-editable prompt template (isDefaultForCustom).
+  const customJob = isCustomCareer(job);
+  const preferredKind = customJob ? 'openai' : 'gemini';
+
   // Build the face-preserving prompt specifically engineered for dream job transformation
   const built = await buildPrompt(
     {
@@ -140,9 +173,10 @@ export async function generateImage(params: GenerateParams): Promise<string> {
       job,
     },
     base64Image,
+    customJob,
   );
 
-  console.log(`[AI] Prompt template: "${built.templateName}"`);
+  console.log(`[AI] Prompt template: "${built.templateName}" (${customJob ? 'custom career -> OpenAI' : 'known career -> Gemini'})`);
   console.log(`[AI] Prompt: ${built.prompt}`);
   if (built.negativePrompt) {
     console.log(`[AI] Negative prompt: ${built.negativePrompt}`);
@@ -152,7 +186,7 @@ export async function generateImage(params: GenerateParams): Promise<string> {
   let lastError = '';
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const provider = await getNextAiProvider();
+    const provider = await getNextAiProvider(preferredKind);
 
     if (!provider) {
       const envUrl = process.env.AI_API_URL;
@@ -165,10 +199,11 @@ export async function generateImage(params: GenerateParams): Promise<string> {
 
       try {
         console.log(`[AI] Attempting generation via .env AI_API_URL: ${envUrl}`);
+        let envRawPath: string;
         if (isGeminiUrl(envUrl)) {
-          return await callGeminiApi(envKey, null, built.prompt, originalImagePath, outputPath);
+          envRawPath = await callGeminiApi(envKey, null, built.prompt, originalImagePath, outputPath);
         } else if (isReplicateUrl(envUrl)) {
-          return await callReplicateApi(
+          envRawPath = await callReplicateApi(
             envUrl,
             envKey,
             null,
@@ -178,10 +213,11 @@ export async function generateImage(params: GenerateParams): Promise<string> {
             outputPath,
           );
         } else if (isOpenAiUrl(envUrl)) {
-          return await callOpenAiApi(envUrl, envKey, null, built.prompt, originalImagePath, outputPath);
+          envRawPath = await callOpenAiApi(envUrl, envKey, null, built.prompt, originalImagePath, outputPath);
         } else {
-          return await callAiApi(envUrl, envKey, null, built, outputPath);
+          envRawPath = await callAiApi(envUrl, envKey, null, built, outputPath);
         }
+        return await normalizeOutputImage(envRawPath);
       } catch (err: any) {
         lastError = err.message;
         console.error(`[AI] .env AI provider failed: ${lastError}`);
@@ -233,8 +269,9 @@ export async function generateImage(params: GenerateParams): Promise<string> {
       }
 
       await markAiProviderSuccess(provider.id);
-      console.log(`[AI] Dream job image successfully generated: ${finalPath}`);
-      return finalPath;
+      const normalizedPath = await normalizeOutputImage(finalPath);
+      console.log(`[AI] Dream job image successfully generated: ${normalizedPath}`);
+      return normalizedPath;
     } catch (err: any) {
       lastError = err.message;
       console.error(`[AI] Provider "${provider.name}" failed: ${lastError}`);
@@ -457,6 +494,14 @@ async function callOpenAiApi(
   form.append('prompt', prompt);
   form.append('model', model || 'gpt-image-1');
   form.append('size', '1024x1536');
+  // 'medium' (gpt-image-1's actual supported values: low/medium/high/auto) —
+  // this is a source-side resolution/detail knob, not a JPEG-style
+  // compression level. It's still the right lever to pull here: "high"
+  // generates unnecessarily large, slow, expensive output that
+  // normalizeOutputImage()/brandGeneratedPhoto() would just downscale and
+  // recompress anyway, so there's no quality benefit to asking for more than
+  // this pipeline's final 1200x1800 delivered size actually uses.
+  form.append('quality', 'medium');
 
   console.log(`[AI] Calling OpenAI images/edits (model: ${model || 'gpt-image-1'})...`);
 

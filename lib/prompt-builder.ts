@@ -1,4 +1,5 @@
 import prisma from './db';
+import { OUTPUT_WIDTH, OUTPUT_HEIGHT } from './output-size';
 
 export interface PromptContext {
   name: string;
@@ -122,8 +123,11 @@ export function resolveVariables(template: string, ctx: PromptContext): string {
     '{{genderPossessive}}': g.genderPossessive,
     '{{genderTitle}}': g.genderTitle,
     '{{job_lower}}': ctx.job.toLowerCase(),
+    '{{job_uppercase}}': ctx.job.toUpperCase(),
     '{{job_clothing}}': details.clothing,
     '{{job_surroundings}}': details.surroundings,
+    '{{output_width}}': String(OUTPUT_WIDTH),
+    '{{output_height}}': String(OUTPUT_HEIGHT),
     '{{face_preservation_instruction}}': FACE_PRESERVATION_TEXT,
   };
 
@@ -153,8 +157,11 @@ function resolveVariablesJsonSafe(template: string, ctx: PromptContext): string 
     '{{genderPossessive}}': g.genderPossessive,
     '{{genderTitle}}': g.genderTitle,
     '{{job_lower}}': ctx.job.toLowerCase(),
+    '{{job_uppercase}}': ctx.job.toUpperCase(),
     '{{job_clothing}}': details.clothing,
     '{{job_surroundings}}': details.surroundings,
+    '{{output_width}}': String(OUTPUT_WIDTH),
+    '{{output_height}}': String(OUTPUT_HEIGHT),
     '{{face_preservation_instruction}}': FACE_PRESERVATION_TEXT,
   };
 
@@ -207,14 +214,32 @@ export function resolveTemplate(
   return { prompt, negativePrompt, requestBody, templateName: fields.name, requestBodyError };
 }
 
-export async function buildPrompt(ctx: PromptContext, imageBase64: string): Promise<BuiltPrompt> {
-  // 1. Use the configured default template
-  let template = await prisma.promptTemplate.findFirst({ where: { isDefault: true } });
+const CUSTOM_CAREER_FRAME_INSTRUCTION =
+  " Add a stylish decorative photo-frame border around the entire edge of the image, thematically " +
+  "matching this career, like a framed portrait card — the frame must sit within the outer 5-8% " +
+  "margin of the image and must not cover the subject's face.";
+
+/**
+ * @param isCustomJob Custom "Other" careers (routed to OpenAI — see
+ * lib/ai-generation.ts) have no pre-made frame PNG to composite afterward,
+ * so they use a separate default template (isDefaultForCustom) whose prompt
+ * asks the model to bake its own frame into the image, rather than the
+ * template used for the 12 known careers.
+ */
+export async function buildPrompt(ctx: PromptContext, imageBase64: string, isCustomJob = false): Promise<BuiltPrompt> {
+  // 1. Use the configured default template for this job's category
+  let template = isCustomJob
+    ? await prisma.promptTemplate.findFirst({ where: { isDefaultForCustom: true } })
+    : null;
+  if (!template) {
+    template = await prisma.promptTemplate.findFirst({ where: { isDefault: true } });
+  }
 
   // 2. Fall back to a hardcoded default if nothing is configured in the DB
   if (!template) {
     const details = getJobClothingAndSetting(ctx.job, ctx.gender);
-    const defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;
+    let defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;
+    if (isCustomJob) defaultPrompt += CUSTOM_CAREER_FRAME_INSTRUCTION;
     const defaultNegative =
       'different face, changed face, altered facial features, distorted eyes, bad anatomy, deformed hands, cartoon, 3d render, anime, illustration, painting, blurry, low resolution, artifacts, watermark, text, signature';
 
@@ -258,8 +283,11 @@ export function getAvailableVariables(): { variable: string; description: string
     { variable: '{{genderTitle}}', description: 'Mr or Ms', example: 'Mr / Ms' },
     { variable: '{{job}}', description: 'Selected dream job', example: 'Doctor' },
     { variable: '{{job_lower}}', description: 'Job in lowercase', example: 'doctor' },
+    { variable: '{{job_uppercase}}', description: 'Job in uppercase', example: 'DOCTOR' },
     { variable: '{{job_clothing}}', description: 'Specific attire for the job', example: 'white doctor coat with stethoscope' },
     { variable: '{{job_surroundings}}', description: 'Specific environment for the job', example: 'modern hospital clinic' },
+    { variable: '{{output_width}}', description: 'Fixed output canvas width in pixels — use in OUTPUT-style instructions instead of hardcoding a number', example: '1200' },
+    { variable: '{{output_height}}', description: 'Fixed output canvas height in pixels', example: '1800' },
     { variable: '{{face_preservation_instruction}}', description: 'Strict instruction to keep user face and identity unchanged', example: 'Preserve the exact same person, face...' },
     { variable: '{{prompt}}', description: 'Resolved main prompt (request body only)', example: '' },
     { variable: '{{negativePrompt}}', description: 'Resolved negative prompt (request body only)', example: '' },
