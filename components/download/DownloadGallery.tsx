@@ -56,15 +56,11 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
       <div className="download-gallery-grid">
         {items.map((item) => (
           <div className="download-item" key={item.key}>
-            {item.key === 'comic-book' ? (
-              <div className="download-comic-cover">
-                <span>Career</span>
-                <strong>DREAM<br />EDITION</strong>
-                <small>Your future starts here</small>
-              </div>
-            ) : (
-              <img className="download-item-preview" src={item.url!} alt={item.label} />
-            )}
+            <img
+              className="download-item-preview"
+              src={item.key === 'comic-book' ? '/documents/Comic-preview.jpg' : item.url!}
+              alt={item.key === 'comic-book' ? 'Career PDF preview' : item.label}
+            />
             <span className="download-item-label">{item.label}</span>
             {item.key === 'comic-book' && (
               <a

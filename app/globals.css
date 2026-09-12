@@ -2266,10 +2266,6 @@ textarea.admin-textarea:focus {
 .download-results .download-gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-bottom: 1rem; }
 .download-results .download-item { flex-direction: column; align-items: stretch; gap: 0.55rem; padding: 1rem; border-radius: 20px; background: #fff9fc; border-color: #f3dce6; min-width: 0; }
 .download-results .download-item-preview { width: 100%; height: auto; aspect-ratio: 4 / 5; object-fit: contain; border-radius: 14px; background: #f8edf3; }
-.download-comic-cover { display: flex; flex-direction: column; aspect-ratio: 4 / 5; padding: 1.25rem; border-radius: 14px; background: linear-gradient(145deg, #fff0f7, #ffd1e6); color: #a30f56; }
-.download-comic-cover > span { text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.6rem; margin-bottom: 0.55rem; }
-.download-comic-cover strong { font-size: clamp(1.6rem, 2.5vw, 2.2rem); line-height: 0.95; letter-spacing: -0.06em; }
-.download-comic-cover small { margin-top: auto; border-top: 1px solid #eeb0cd; padding-top: 0.8rem; text-transform: uppercase; font-size: 0.55rem; letter-spacing: 0.05em; }
 .download-results .download-item-label { flex: none; margin: 0.5rem 0 0.2rem; }
 .download-results .download-item-btn { display: flex; align-items: center; justify-content: space-between; min-height: 44px; background: linear-gradient(100deg, #ff2387, #ed0872); border: 1px solid transparent; border-radius: 12px; padding: 0.7rem 0.8rem; }
 .download-results .download-preview-btn { background: #fff; border-color: #f6aacb; color: #e2136e; }
