@@ -40,7 +40,7 @@ export default function StepInfo({ onComplete }: Props) {
 
   const handleSubmit = async () => {
     const errs: Record<string, string> = {};
-    if (!acceptedTerms) errs.terms = 'Please agree to the Terms and Conditions to continue';
+    if (!acceptedTerms) errs.terms = 'Please agree to the Disclaimer to continue';
     if (!info.name.trim()) errs.name = 'Name is required';
     if (!info.phone.trim()) errs.phone = 'Phone number is required';
     else if (!isValidPhone(info.phone)) errs.phone = PHONE_VALIDATION_MESSAGE;

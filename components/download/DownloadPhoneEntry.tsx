@@ -27,7 +27,7 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
       return;
     }
     if (!acceptedTerms) {
-      setTermsError('Please agree to the Terms and Conditions to continue');
+      setTermsError('Please agree to the Disclaimer to continue');
       return;
     }
     setTermsError('');

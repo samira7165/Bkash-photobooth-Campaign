@@ -25,7 +25,7 @@ export default function TermsAndConditions({ accepted, onChange, error }: Props)
           <path d="M14 3.5V8h4.5" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
           <path d="M8.5 12.5h7M8.5 15.5h7M8.5 18h4.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
         </svg>
-        <span>Terms and Conditions</span>
+        <span>Disclaimer</span>
         <svg className="terms-trigger-arrow" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -39,7 +39,7 @@ export default function TermsAndConditions({ accepted, onChange, error }: Props)
           aria-invalid={!!error && !accepted}
           aria-describedby={error && !accepted ? `${id}-error` : undefined}
         />
-        <span>I have read and agree to the Terms and Conditions</span>
+        <span>I have read and agree to the Disclaimer</span>
       </label>
       {error && !accepted && <p id={`${id}-error`} className="terms-error" role="alert">{error}</p>}
 
@@ -52,7 +52,7 @@ export default function TermsAndConditions({ accepted, onChange, error }: Props)
         }}
       >
         <div className="terms-modal-header">
-          <h3>Terms and Conditions</h3>
+          <h3>Disclaimer</h3>
           <button
             type="button"
             className="terms-modal-close"

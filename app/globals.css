@@ -2439,7 +2439,7 @@ textarea.admin-textarea:focus {
 .download-layout .download-search { flex-wrap: wrap; }
 .download-search .terms-and-conditions { order: 3; flex-basis: 100%; margin: 0.5rem 0 0; }
 
-/* ── Terms and Conditions Modal ── */
+/* ── Disclaimer Modal ── */
 .terms-modal {
   margin: auto; padding: 0; border: 0; border-radius: 16px;
   width: min(600px, 92vw); max-height: 85dvh; background: #fff;
