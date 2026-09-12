@@ -48,7 +48,7 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
   const items = [
     { key: 'ai', label: 'AI Generated Image', url: submission.aiUrl },
     { key: 'original', label: 'Original Photo', url: submission.originalUrl },
-    { key: 'comic-book', label: 'Career PDF', url: submission.comicBookUrl },
+    { key: 'comic-book', label: 'Comic Book', url: submission.comicBookUrl },
   ].filter((item) => item.url);
 
   return (
@@ -59,9 +59,9 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
             <img
               className="download-item-preview"
               src={item.key === 'comic-book' ? '/documents/Comic-preview.jpg' : item.url!}
-              alt={item.key === 'comic-book' ? 'Career PDF preview' : item.label}
+              alt={item.key === 'comic-book' ? 'Comic book preview' : item.label}
             />
-            <span className="download-item-label">{item.label}</span>
+            {item.key !== 'comic-book' && <span className="download-item-label">{item.label}</span>}
             {item.key === 'comic-book' && (
               <a
                 className="download-item-btn download-preview-btn"
@@ -84,7 +84,7 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
                 onComicDownload();
               } : undefined}
             >
-              <span>{item.key === 'comic-book' ? 'Download PDF' : 'Download'}</span>
+              <span>{item.key === 'comic-book' ? 'Click Here To Download Comic Book' : 'Download'}</span>
               <span aria-hidden="true">↓</span>
             </a>
           </div>
