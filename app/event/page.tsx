@@ -8,7 +8,7 @@ import StepDone from '@/components/StepDone';
 
 type Step = 'info' | 'dreamJob' | 'camera' | 'done';
 
-export default function Home() {
+export default function EventPage() {
   const [step, setStep] = useState<Step>('info');
   const [sessionId, setSessionId] = useState('');
   const [phone, setPhone] = useState('');
