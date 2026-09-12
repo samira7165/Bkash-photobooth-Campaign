@@ -469,6 +469,43 @@ export async function bulkDeleteSubmissions(ids: string[]): Promise<{ success: b
   return handle<{ success: boolean; deleted: number }>(res);
 }
 
+export async function regenerateSubmission(id: string): Promise<void> {
+  const res = await fetch(`/api/admin/submissions/${id}/regenerate`, { method: 'POST' });
+  await handle(res);
+}
+
+export async function regenerateParticipantImage(id: string): Promise<void> {
+  const res = await fetch(`/api/admin/participants/${id}/regenerate`, { method: 'POST' });
+  await handle(res);
+}
+
+export async function deleteParticipant(id: string): Promise<void> {
+  const res = await fetch(`/api/admin/participants/${id}`, { method: 'DELETE' });
+  await handle<{ success: boolean; message: string }>(res);
+}
+
+// ─── Admin: CSV export ───
+// Not a fetch — this is a direct file download, so callers just point a
+// link/window navigation at this URL (the admin_token cookie authenticates
+// it same as any other admin page load).
+export function exportCsvUrl(params: {
+  source?: 'all' | 'booth' | 'mobile';
+  gender?: 'all' | 'male' | 'female';
+  status?: string;
+  search?: string;
+  eventId?: string;
+  career?: string;
+}): string {
+  const qs = new URLSearchParams();
+  if (params.source) qs.set('source', params.source);
+  if (params.gender) qs.set('gender', params.gender);
+  if (params.status) qs.set('status', params.status);
+  if (params.search) qs.set('search', params.search);
+  if (params.eventId) qs.set('eventId', params.eventId);
+  if (params.career) qs.set('career', params.career);
+  return `/api/admin/export?${qs.toString()}`;
+}
+
 // ─── Admin: Dashboard stats ───
 
 export interface RecentSubmission {

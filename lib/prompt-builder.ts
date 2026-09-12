@@ -22,6 +22,19 @@ interface TemplateFields {
   requestBodyTemplate?: string | null;
 }
 
+// Some career labels shown to the user don't produce the best results if
+// sent to the AI verbatim — e.g. "Painter" reads to an image model as a
+// house/wall painter rather than a fine artist. Translate just the word that
+// reaches the prompt right here; the original label keeps showing
+// everywhere else (career tile, DB, admin, SMS).
+const PROMPT_JOB_WORD_OVERRIDES: Record<string, string> = {
+  painter: 'Artist',
+};
+
+function promptJobWord(job: string): string {
+  return PROMPT_JOB_WORD_OVERRIDES[job.trim().toLowerCase()] || job;
+}
+
 function genderVars(gender: string) {
   return {
     genderWord: gender === 'male' ? 'man' : 'woman',
@@ -62,9 +75,9 @@ export function getJobClothingAndSetting(job: string, gender: string): { clothin
         clothing: `a prestigious military officer service dress uniform with insignia, service medals, and formal officer beret or cap`,
         surroundings: `at a formal military headquarters courtyard or dignified ceremonial parade ground with flags in the background`,
       };
-    case 'painter':
+    case 'artist':
       return {
-        clothing: `an artistic painter smock or apron with subtle artistic paint smudges, holding a wooden palette and paintbrush`,
+        clothing: `an artistic smock or apron with subtle paint smudges, holding a wooden palette and paintbrush like a fine artist`,
         surroundings: `inside a sunlit art studio filled with canvas paintings on easels and colorful artist supplies`,
       };
     case 'professional gamer':
@@ -112,18 +125,19 @@ const FACE_PRESERVATION_TEXT =
 /** Plain-text variable resolution — used for the prompt / negative prompt themselves. */
 export function resolveVariables(template: string, ctx: PromptContext): string {
   const g = genderVars(ctx.gender);
-  const details = getJobClothingAndSetting(ctx.job, ctx.gender);
+  const promptJob = promptJobWord(ctx.job);
+  const details = getJobClothingAndSetting(promptJob, ctx.gender);
   const vars: Record<string, string> = {
     '{{name}}': ctx.name,
     '{{gender}}': ctx.gender,
-    '{{job}}': ctx.job,
+    '{{job}}': promptJob,
     '{{genderWord}}': g.genderWord,
     '{{genderBoy}}': g.genderBoy,
     '{{genderSubject}}': g.genderSubject,
     '{{genderPossessive}}': g.genderPossessive,
     '{{genderTitle}}': g.genderTitle,
-    '{{job_lower}}': ctx.job.toLowerCase(),
-    '{{job_uppercase}}': ctx.job.toUpperCase(),
+    '{{job_lower}}': promptJob.toLowerCase(),
+    '{{job_uppercase}}': promptJob.toUpperCase(),
     '{{job_clothing}}': details.clothing,
     '{{job_surroundings}}': details.surroundings,
     '{{output_width}}': String(OUTPUT_WIDTH),
@@ -146,18 +160,19 @@ function escapeForJson(value: string): string {
 /** Same variable set as resolveVariables, but each value is JSON-escaped — for use inside requestBodyTemplate. */
 function resolveVariablesJsonSafe(template: string, ctx: PromptContext): string {
   const g = genderVars(ctx.gender);
-  const details = getJobClothingAndSetting(ctx.job, ctx.gender);
+  const promptJob = promptJobWord(ctx.job);
+  const details = getJobClothingAndSetting(promptJob, ctx.gender);
   const vars: Record<string, string> = {
     '{{name}}': ctx.name,
     '{{gender}}': ctx.gender,
-    '{{job}}': ctx.job,
+    '{{job}}': promptJob,
     '{{genderWord}}': g.genderWord,
     '{{genderBoy}}': g.genderBoy,
     '{{genderSubject}}': g.genderSubject,
     '{{genderPossessive}}': g.genderPossessive,
     '{{genderTitle}}': g.genderTitle,
-    '{{job_lower}}': ctx.job.toLowerCase(),
-    '{{job_uppercase}}': ctx.job.toUpperCase(),
+    '{{job_lower}}': promptJob.toLowerCase(),
+    '{{job_uppercase}}': promptJob.toUpperCase(),
     '{{job_clothing}}': details.clothing,
     '{{job_surroundings}}': details.surroundings,
     '{{output_width}}': String(OUTPUT_WIDTH),
@@ -237,7 +252,8 @@ export async function buildPrompt(ctx: PromptContext, imageBase64: string, isCus
 
   // 2. Fall back to a hardcoded default if nothing is configured in the DB
   if (!template) {
-    const details = getJobClothingAndSetting(ctx.job, ctx.gender);
+    const promptJob = promptJobWord(ctx.job);
+    const details = getJobClothingAndSetting(promptJob, ctx.gender);
     let defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;
     if (isCustomJob) defaultPrompt += CUSTOM_CAREER_FRAME_INSTRUCTION;
     const defaultNegative =
@@ -254,7 +270,7 @@ export async function buildPrompt(ctx: PromptContext, imageBase64: string, isCus
         negative_prompt: defaultNegative,
         image: imageBase64,
         gender: ctx.gender,
-        job: ctx.job,
+        job: promptJob,
       },
       templateName: 'Hardcoded Default',
     };

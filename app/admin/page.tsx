@@ -25,10 +25,12 @@ import {
   createPromptTemplate,
   createProvider,
   createUser,
+  deleteParticipant,
   deletePromptTemplate,
   deleteProvider,
   deleteSubmission,
   deleteUser,
+  exportCsvUrl,
   getAnalytics,
   getCurrentAdmin,
   getDashboardStats,
@@ -41,6 +43,8 @@ import {
   getSubmissions,
   getUsers,
   previewPrompt,
+  regenerateParticipantImage,
+  regenerateSubmission,
   resetProvider,
   resetUserPassword,
   updateEvent,
@@ -258,6 +262,7 @@ const EMPTY_PROVIDER_FORM: ProviderFormState = {
 type ConfirmAction =
   | { kind: 'submission'; type: 'single'; id: string }
   | { kind: 'submission'; type: 'bulk' }
+  | { kind: 'participant'; id: string }
   | { kind: 'provider'; provider: Provider }
   | { kind: 'user'; user: AdminUser }
   | { kind: 'prompt'; template: PromptTemplate };
@@ -437,6 +442,7 @@ export default function AdminPage() {
   // ── Submissions ──
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchPhone, setSearchPhone] = useState('');
+  const [exportGenderFilter, setExportGenderFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [submissions, setSubmissions] = useState<SubmissionsResponse | null>(null);
   const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -489,6 +495,34 @@ export default function AdminPage() {
   function downloadBoth(s: Submission) {
     if (s.hasOriginalImage) triggerDownload(downloadUrl(s.id, 'original'));
     if (s.hasGeneratedImage) triggerDownload(downloadUrl(s.id, 'generated'));
+  }
+
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
+  async function handleRegenerateSubmission(id: string) {
+    setRegeneratingId(id);
+    try {
+      await regenerateSubmission(id);
+      await loadSubmissions();
+      showToast('Regeneration queued', 'success');
+    } catch (e: any) {
+      showError(e.message || 'Failed to queue regeneration');
+    } finally {
+      setRegeneratingId(null);
+    }
+  }
+
+  async function handleRegenerateParticipant(id: string) {
+    setRegeneratingId(id);
+    try {
+      await regenerateParticipantImage(id);
+      await loadParticipants();
+      showToast('Regeneration queued', 'success');
+    } catch (e: any) {
+      showError(e.message || 'Failed to queue regeneration');
+    } finally {
+      setRegeneratingId(null);
+    }
   }
 
   // ── Participants (mobile QR experience) ──
@@ -861,6 +895,10 @@ export default function AdminPage() {
           setSelectedIds(new Set());
           showToast(`${result.deleted} submissions deleted`, 'success');
         }
+      } else if (confirmAction.kind === 'participant') {
+        await deleteParticipant(confirmAction.id);
+        await loadParticipants();
+        showToast('Participant deleted', 'success');
       } else if (confirmAction.kind === 'provider') {
         await deleteProvider(confirmAction.provider.id);
         await loadProviders();
@@ -1052,6 +1090,30 @@ export default function AdminPage() {
                   value={searchPhone}
                   onChange={(e) => setSearchPhone(e.target.value)}
                 />
+                <select
+                  className="admin-select"
+                  value={exportGenderFilter}
+                  onChange={(e) => setExportGenderFilter(e.target.value)}
+                  title="Gender filter for export"
+                >
+                  <option value="all">All Genders</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+                <a
+                  className="btn-secondary admin-btn-inline"
+                  href={exportCsvUrl({ source: 'booth', gender: exportGenderFilter as any, status: statusFilter, search: searchPhone })}
+                  title="Export booth submissions as CSV"
+                >
+                  Export Booth CSV
+                </a>
+                <a
+                  className="btn-secondary admin-btn-inline"
+                  href={exportCsvUrl({ source: 'all', gender: 'all' })}
+                  title="Export every submission (booth + mobile) as CSV"
+                >
+                  Export All CSV
+                </a>
               </>
             )}
             {section === 'participants' && (
@@ -1092,6 +1154,19 @@ export default function AdminPage() {
                   value={participantSearch}
                   onChange={(e) => setParticipantSearch(e.target.value)}
                 />
+                <a
+                  className="btn-secondary admin-btn-inline"
+                  href={exportCsvUrl({
+                    source: 'mobile',
+                    gender: participantGenderFilter as any,
+                    eventId: participantEventFilter,
+                    career: participantCareerFilter,
+                    search: participantSearch,
+                  })}
+                  title="Export mobile submissions as CSV"
+                >
+                  Export Mobile CSV
+                </a>
               </>
             )}
             {section === 'users' && (
@@ -1165,6 +1240,8 @@ export default function AdminPage() {
             onLightbox={setLightboxSrc}
             onDownloadBoth={downloadBoth}
             onDeleteOne={(id) => setConfirmAction({ kind: 'submission', type: 'single', id })}
+            onRegenerate={handleRegenerateSubmission}
+            regeneratingId={regeneratingId}
             onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
             onNextPage={() => setPage((p) => Math.min(totalPages, p + 1))}
           />
@@ -1190,6 +1267,9 @@ export default function AdminPage() {
             onPrevPage={() => setParticipantPage((p) => Math.max(1, p - 1))}
             onNextPage={() => setParticipantPage((p) => Math.min(participantTotalPages, p + 1))}
             onUploadEventComicBook={uploadEventComicBook}
+            onRegenerate={handleRegenerateParticipant}
+            regeneratingId={regeneratingId}
+            onDeleteOne={(id) => setConfirmAction({ kind: 'participant', id })}
           />
         )}
 
@@ -1730,6 +1810,9 @@ export default function AdminPage() {
         ? 'Delete this submission? The original and generated images will be permanently removed.'
         : `Delete ${selectedIds.size} submissions? This cannot be undone.`;
     }
+    if (action.kind === 'participant') {
+      return 'Delete this participant? Their photos will be permanently removed.';
+    }
     if (action.kind === 'provider') {
       return `Delete provider "${action.provider.name}"?`;
     }
@@ -2125,6 +2208,8 @@ function SubmissionsSection({
   onLightbox,
   onDownloadBoth,
   onDeleteOne,
+  onRegenerate,
+  regeneratingId,
   onPrevPage,
   onNextPage,
 }: {
@@ -2141,6 +2226,8 @@ function SubmissionsSection({
   onLightbox: (src: string) => void;
   onDownloadBoth: (s: Submission) => void;
   onDeleteOne: (id: string) => void;
+  onRegenerate: (id: string) => void;
+  regeneratingId: string | null;
   onPrevPage: () => void;
   onNextPage: () => void;
 }) {
@@ -2257,6 +2344,16 @@ function SubmissionsSection({
                       >
                         ↓↓
                       </button>
+                      {s.status === 'failed' && (
+                        <button
+                          className="btn-secondary admin-btn-sm"
+                          onClick={() => onRegenerate(s.id)}
+                          disabled={regeneratingId === s.id}
+                          title="Retry image generation"
+                        >
+                          {regeneratingId === s.id ? 'Queuing…' : 'Regenerate'}
+                        </button>
+                      )}
                       <button className="admin-delete-btn" onClick={() => onDeleteOne(s.id)} title="Delete submission">
                         Delete
                       </button>
@@ -2314,6 +2411,9 @@ function ParticipantsSection({
   onPrevPage,
   onNextPage,
   onUploadEventComicBook,
+  onRegenerate,
+  regeneratingId,
+  onDeleteOne,
 }: {
   stats: ParticipantStats | null;
   events: EventData[];
@@ -2333,6 +2433,9 @@ function ParticipantsSection({
   onPrevPage: () => void;
   onNextPage: () => void;
   onUploadEventComicBook: (eventId: string, file: File) => Promise<void>;
+  onRegenerate: (id: string) => void;
+  regeneratingId: string | null;
+  onDeleteOne: (id: string) => void;
 }) {
   const [uploadingComicBookFor, setUploadingComicBookFor] = useState<string | null>(null);
 
@@ -2470,6 +2573,7 @@ function ParticipantsSection({
               <th>Status</th>
               <th>Downloads</th>
               <th>Created</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -2489,11 +2593,28 @@ function ParticipantsSection({
                   </td>
                   <td>{p.downloadCount}</td>
                   <td>{timeAgo(p.createdAt)}</td>
+                  <td>
+                    <div className="admin-row-actions">
+                      {p.processingStatus === 'failed' && (
+                        <button
+                          className="btn-secondary admin-btn-sm"
+                          onClick={() => onRegenerate(p.id)}
+                          disabled={regeneratingId === p.id}
+                          title="Retry image generation"
+                        >
+                          {regeneratingId === p.id ? 'Queuing…' : 'Regenerate'}
+                        </button>
+                      )}
+                      <button className="admin-delete-btn" onClick={() => onDeleteOne(p.id)} title="Delete participant">
+                        Delete
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={9} className="admin-empty-cell">
+                <td colSpan={10} className="admin-empty-cell">
                   {participantsLoading ? 'Loading…' : 'No participants yet'}
                 </td>
               </tr>
