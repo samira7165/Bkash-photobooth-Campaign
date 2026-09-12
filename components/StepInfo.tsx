@@ -1,22 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
 import { isValidPhone, normalizePhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
-import { createSession } from '@/services/api';
+import { checkSessionPhoneAlreadyUsed, createSession } from '@/services/api';
 
 interface Props {
   onComplete: (sessionId: string, userInfo: { name: string; phone: string; email: string; college: string; gender: string }) => void;
 }
+
+const PHONE_CHECK_DEBOUNCE_MS = 500;
 
 export default function StepInfo({ onComplete }: Props) {
   const [info, setInfo] = useState({ name: '', phone: '', email: '', college: '', gender: '' });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [alreadyUsed, setAlreadyUsed] = useState(false);
+  const checkTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const handlePhoneChange = (phone: string) => {
     setInfo({ ...info, phone });
+    setAlreadyUsed(false);
 
     // Too many digits is unambiguous the moment it happens — flag it
     // immediately instead of waiting for blur/submit. Too few is only
@@ -30,7 +35,16 @@ export default function StepInfo({ onComplete }: Props) {
       }
       return prev;
     });
+
+    if (checkTimer.current) clearTimeout(checkTimer.current);
+    if (!isValidPhone(phone)) return;
+    checkTimer.current = setTimeout(async () => {
+      const used = await checkSessionPhoneAlreadyUsed(phone).catch(() => false);
+      setAlreadyUsed(used);
+    }, PHONE_CHECK_DEBOUNCE_MS);
   };
+
+  useEffect(() => () => { if (checkTimer.current) clearTimeout(checkTimer.current); }, []);
 
   const handlePhoneBlur = () => {
     if (info.phone.trim() && !isValidPhone(info.phone)) {
@@ -39,6 +53,8 @@ export default function StepInfo({ onComplete }: Props) {
   };
 
   const handleSubmit = async () => {
+    if (alreadyUsed || loading) return;
+
     const errs: Record<string, string> = {};
     if (!acceptedTerms) errs.terms = 'Please agree to the Disclaimer to continue';
     if (!info.name.trim()) errs.name = 'Name is required';
@@ -94,6 +110,9 @@ export default function StepInfo({ onComplete }: Props) {
         <input type="tel" placeholder="+880 1XX XXXX XXX" value={info.phone}
           onChange={(e) => handlePhoneChange(e.target.value)} onBlur={handlePhoneBlur} />
         {errors.phone && <span className="field-err">{errors.phone}</span>}
+        {alreadyUsed && (
+          <span className="field-err">This phone number has already been used to take a picture.</span>
+        )}
       </div>
 
       <div className="kiosk-field">
@@ -126,7 +145,7 @@ export default function StepInfo({ onComplete }: Props) {
 
       <TermsAndConditions accepted={acceptedTerms} onChange={setAcceptedTerms} error={errors.terms} />
 
-      <button className="kiosk-btn-primary" onClick={handleSubmit} disabled={loading}>
+      <button className="kiosk-btn-primary" onClick={handleSubmit} disabled={alreadyUsed || loading}>
         <span>{loading ? 'Saving…' : 'Continue'}</span>
         <span className="btn-arrow">→</span>
       </button>

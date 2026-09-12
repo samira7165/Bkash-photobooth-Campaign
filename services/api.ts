@@ -110,6 +110,14 @@ export async function checkAlreadyParticipated(phone: string): Promise<boolean> 
   return !!data.alreadyParticipated;
 }
 
+export async function checkSessionPhoneAlreadyUsed(phone: string): Promise<boolean> {
+  const qs = new URLSearchParams({ phone });
+  const res = await fetch(`/api/sessions/check-phone?${qs.toString()}`);
+  if (!res.ok) return false;
+  const data = await res.json();
+  return !!data.alreadyUsed;
+}
+
 export async function requestParticipantOtp(phone: string): Promise<void> {
   const res = await fetch('/api/participants/request-otp', {
     method: 'POST',

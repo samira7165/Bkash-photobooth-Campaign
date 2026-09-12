@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
-import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import { normalizePhone, isValidPhone, phoneSearchVariants, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,10 +22,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Gender must be male or female' }, { status: 400 });
     }
 
+    const normalizedPhone = normalizePhone(phone.trim());
+
+    // One phone number = one booth submission, ever — mirrors the mobile
+    // experience's Participant.phone uniqueness rule. Checked regardless of
+    // the earlier session's status: a failed generation gets fixed via the
+    // admin's Regenerate button, not by the customer starting over.
+    const existing = await prisma.session.findFirst({
+      where: { phone: { in: phoneSearchVariants(normalizedPhone) } },
+      select: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { message: 'This phone number has already been used to take a picture.' },
+        { status: 409 },
+      );
+    }
+
     const session = await prisma.session.create({
       data: {
         name: name.trim(),
-        phone: normalizePhone(phone.trim()),
+        phone: normalizedPhone,
         email: email?.trim() || null,
         college: college?.trim() || null,
         gender,
