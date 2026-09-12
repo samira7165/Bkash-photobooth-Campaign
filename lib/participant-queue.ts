@@ -1,5 +1,5 @@
 import { generateImage } from './ai-generation';
-import { sendXriSms } from './sms-gateway';
+import { sendRouteMobileSms } from './sms-gateway';
 import { renderOriginal, renderBrandedGenerated } from './rendered-photo-cache';
 import type { Image, Participant } from '@prisma/client';
 import prisma from './db';
@@ -64,7 +64,7 @@ async function processParticipantImage(image: Image & { participant: Participant
     const message = `[Dream Career] Hi ${participant.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     try {
-      await sendXriSms(participant.phone, message);
+      await sendRouteMobileSms(participant.phone, message);
       await prisma.image.update({
         where: { id: image.id },
         data: { smsSent: true, processingStatus: 'sms_sent' },
@@ -142,7 +142,7 @@ export async function retryPendingParticipantSms() {
     console.log(`[ParticipantQueue] Retrying SMS for image ${image.id} (attempt ${image.smsAttempts + 1})`);
 
     try {
-      await sendXriSms(participant.phone, message);
+      await sendRouteMobileSms(participant.phone, message);
       await prisma.image.update({
         where: { id: image.id },
         data: { smsSent: true, processingStatus: 'sms_sent' },
