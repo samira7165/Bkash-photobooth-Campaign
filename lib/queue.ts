@@ -73,7 +73,7 @@ async function processSession(session: Session) {
     }
 
     const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
-    const message = `[LIVE Beats] Hi ${session.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
+    const message = `[Dream Career] Hi ${session.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     try {
       await sendXriSms(session.phone, message);
@@ -153,7 +153,7 @@ export async function retryPendingSessionSms() {
 
     const downloadLink = session.smsShortUrl
       || `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
-    const message = `[LIVE Beats] Hi ${session.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
+    const message = `[Dream Career] Hi ${session.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     console.log(`[Queue] Retrying SMS for session ${session.id} (attempt ${session.smsAttempts + 1})`);
 

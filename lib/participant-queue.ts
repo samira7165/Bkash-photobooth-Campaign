@@ -61,7 +61,7 @@ async function processParticipantImage(image: Image & { participant: Participant
     }
 
     const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
-    const message = `[LIVE Beats] Hi ${participant.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
+    const message = `[Dream Career] Hi ${participant.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     try {
       await sendXriSms(participant.phone, message);
@@ -137,7 +137,7 @@ export async function retryPendingParticipantSms() {
 
     const { participant } = image;
     const downloadLink = `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/download`;
-    const message = `[LIVE Beats] Hi ${participant.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
+    const message = `[Dream Career] Hi ${participant.name}, your Dream Career image is ready! Download it here:\n${downloadLink}`;
 
     console.log(`[ParticipantQueue] Retrying SMS for image ${image.id} (attempt ${image.smsAttempts + 1})`);
 
