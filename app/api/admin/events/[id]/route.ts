@@ -51,5 +51,5 @@ export async function PUT(
       console.error('[API] Update event error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

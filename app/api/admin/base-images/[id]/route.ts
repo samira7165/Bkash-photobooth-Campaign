@@ -36,7 +36,7 @@ export async function PUT(
       console.error('[API] Update base image error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function DELETE(
@@ -64,5 +64,5 @@ export async function DELETE(
       console.error('[API] Delete base image error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

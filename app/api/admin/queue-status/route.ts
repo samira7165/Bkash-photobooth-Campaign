@@ -21,5 +21,5 @@ export async function GET(req: NextRequest) {
       console.error('[API] Queue status error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

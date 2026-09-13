@@ -37,5 +37,5 @@ export async function POST(
       console.error('[API] Regenerate submission error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

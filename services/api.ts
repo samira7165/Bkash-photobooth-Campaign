@@ -476,6 +476,7 @@ export interface AdminUser {
   id: string;
   username: string;
   displayName: string;
+  role: 'admin' | 'client';
   lastLoginAt?: string | null;
   createdAt?: string;
 }
@@ -607,6 +608,7 @@ export async function createUser(data: {
   username: string;
   password: string;
   displayName: string;
+  role?: 'admin' | 'client';
 }): Promise<AdminUser> {
   const res = await fetch('/api/admin/users', {
     method: 'POST',
@@ -616,11 +618,11 @@ export async function createUser(data: {
   return handle<AdminUser>(res);
 }
 
-export async function updateUser(id: string, displayName: string): Promise<AdminUser> {
+export async function updateUser(id: string, displayName: string, role?: 'admin' | 'client'): Promise<AdminUser> {
   const res = await fetch(`/api/admin/users/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ displayName }),
+    body: JSON.stringify({ displayName, role }),
   });
   return handle<AdminUser>(res);
 }

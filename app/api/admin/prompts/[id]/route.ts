@@ -21,7 +21,7 @@ export async function GET(
       console.error('[API] Get prompt template error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function PUT(
@@ -83,7 +83,7 @@ export async function PUT(
       console.error('[API] Update prompt template error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function DELETE(
@@ -115,5 +115,5 @@ export async function DELETE(
       console.error('[API] Delete prompt template error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

@@ -78,6 +78,10 @@ const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: 'users', label: 'Users' },
 ];
 
+// Read-only "client" role — sections beyond these are hidden here and
+// blocked server-side (see lib/admin-guard.ts's `roles` option).
+const CLIENT_ALLOWED_SECTIONS: Section[] = ['dashboard', 'analytics', 'submissions'];
+
 const SECTION_TITLES: Record<Section, string> = {
   dashboard: 'Dashboard',
   analytics: 'Analytics',
@@ -647,10 +651,11 @@ export default function AdminPage() {
   }, [showError]);
 
   const [showUserForm, setShowUserForm] = useState(false);
-  const [userForm, setUserForm] = useState({ username: '', displayName: '', password: '', confirmPassword: '' });
+  const [userForm, setUserForm] = useState({ username: '', displayName: '', password: '', confirmPassword: '', role: 'admin' as 'admin' | 'client' });
   const [userFormSaving, setUserFormSaving] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editDisplayName, setEditDisplayName] = useState('');
+  const [editRole, setEditRole] = useState<'admin' | 'client'>('admin');
   const [resetPwUser, setResetPwUser] = useState<AdminUser | null>(null);
   const [resetPwForm, setResetPwForm] = useState({ password: '', confirmPassword: '' });
   const [resetPwSaving, setResetPwSaving] = useState(false);
@@ -675,9 +680,10 @@ export default function AdminPage() {
         username: userForm.username.trim(),
         displayName: userForm.displayName.trim(),
         password: userForm.password,
+        role: userForm.role,
       });
       setShowUserForm(false);
-      setUserForm({ username: '', displayName: '', password: '', confirmPassword: '' });
+      setUserForm({ username: '', displayName: '', password: '', confirmPassword: '', role: 'admin' });
       await loadUsers();
       showToast('User created', 'success');
     } catch (e: any) {
@@ -694,7 +700,7 @@ export default function AdminPage() {
       return;
     }
     try {
-      await updateUser(editingUser.id, editDisplayName.trim());
+      await updateUser(editingUser.id, editDisplayName.trim(), editRole);
       setEditingUser(null);
       await loadUsers();
       showToast('User updated', 'success');
@@ -937,6 +943,14 @@ export default function AdminPage() {
     })();
   }, [router]);
 
+  // Defensive client-side guard — the real enforcement is server-side
+  // (withAdminAuth's `roles` option), this just keeps the UI consistent.
+  useEffect(() => {
+    if (admin?.role === 'client' && !CLIENT_ALLOWED_SECTIONS.includes(section)) {
+      setSection('dashboard');
+    }
+  }, [admin, section]);
+
   async function handleLogout() {
     try {
       await adminLogout();
@@ -1035,7 +1049,7 @@ export default function AdminPage() {
           <span className="admin-logo-text">Photobooth Admin</span>
         </div>
         <nav className="admin-sidebar-nav">
-          {NAV_ITEMS.map((item) => (
+          {(admin.role === 'client' ? NAV_ITEMS.filter((item) => CLIENT_ALLOWED_SECTIONS.includes(item.id)) : NAV_ITEMS).map((item) => (
             <button
               key={item.id}
               className={`admin-nav-item ${section === item.id ? 'active' : ''}`}
@@ -1181,6 +1195,7 @@ export default function AdminPage() {
           <DashboardSection
             stats={dashStats}
             onViewAll={() => setSection('submissions')}
+            restricted={admin.role === 'client'}
           />
         )}
 
@@ -1244,6 +1259,7 @@ export default function AdminPage() {
             regeneratingId={regeneratingId}
             onPrevPage={() => setPage((p) => Math.max(1, p - 1))}
             onNextPage={() => setPage((p) => Math.min(totalPages, p + 1))}
+            readOnly={admin.role === 'client'}
           />
         )}
 
@@ -1282,6 +1298,7 @@ export default function AdminPage() {
             onEdit={(u) => {
               setEditingUser(u);
               setEditDisplayName(u.displayName);
+              setEditRole(u.role);
             }}
             onResetPassword={(u) => setResetPwUser(u)}
             onDelete={(u) => setConfirmAction({ kind: 'user', user: u })}
@@ -1289,7 +1306,7 @@ export default function AdminPage() {
         )}
       </main>
 
-      {selectedIds.size > 0 && section === 'submissions' && (
+      {selectedIds.size > 0 && section === 'submissions' && admin.role !== 'client' && (
         <div className="admin-bulk-bar">
           <span>{selectedIds.size} selected</span>
           <button
@@ -1719,6 +1736,17 @@ export default function AdminPage() {
                   required
                 />
               </div>
+              <div className="field">
+                <label>Role</label>
+                <select
+                  className="admin-select"
+                  value={userForm.role}
+                  onChange={(e) => setUserForm((f) => ({ ...f, role: e.target.value as 'admin' | 'client' }))}
+                >
+                  <option value="admin">Admin (full access)</option>
+                  <option value="client">Client (read-only)</option>
+                </select>
+              </div>
               <div className="admin-modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setShowUserForm(false)}>
                   Cancel
@@ -1745,6 +1773,17 @@ export default function AdminPage() {
                   onChange={(e) => setEditDisplayName(e.target.value)}
                   required
                 />
+              </div>
+              <div className="field">
+                <label>Role</label>
+                <select
+                  className="admin-select"
+                  value={editRole}
+                  onChange={(e) => setEditRole(e.target.value as 'admin' | 'client')}
+                >
+                  <option value="admin">Admin (full access)</option>
+                  <option value="client">Client (read-only)</option>
+                </select>
               </div>
               <div className="admin-modal-actions">
                 <button type="button" className="btn-secondary" onClick={() => setEditingUser(null)}>
@@ -1840,9 +1879,11 @@ export default function AdminPage() {
 function DashboardSection({
   stats,
   onViewAll,
+  restricted,
 }: {
   stats: DashboardStats | null;
   onViewAll: () => void;
+  restricted?: boolean;
 }) {
   return (
     <>
@@ -1861,22 +1902,28 @@ function DashboardSection({
         </div>
       </div>
       <div className="admin-stats-grid">
-        <div className="admin-stat-card">
-          <div className="admin-stat-num warn">{stats?.queued ?? '—'}</div>
-          <div className="admin-stat-label">In Queue</div>
-        </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-num info">{stats?.processing ?? '—'}</div>
-          <div className="admin-stat-label">Processing Now</div>
-        </div>
+        {!restricted && (
+          <>
+            <div className="admin-stat-card">
+              <div className="admin-stat-num warn">{stats?.queued ?? '—'}</div>
+              <div className="admin-stat-label">In Queue</div>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-num info">{stats?.processing ?? '—'}</div>
+              <div className="admin-stat-label">Processing Now</div>
+            </div>
+          </>
+        )}
         <div className="admin-stat-card">
           <div className="admin-stat-num success">{stats?.smsSent ?? '—'}</div>
           <div className="admin-stat-label">SMS Sent</div>
         </div>
-        <div className="admin-stat-card">
-          <div className="admin-stat-num danger">{stats?.failed ?? '—'}</div>
-          <div className="admin-stat-label">Failed</div>
-        </div>
+        {!restricted && (
+          <div className="admin-stat-card">
+            <div className="admin-stat-num danger">{stats?.failed ?? '—'}</div>
+            <div className="admin-stat-label">Failed</div>
+          </div>
+        )}
       </div>
 
       <div className="admin-panel">
@@ -2222,6 +2269,7 @@ function SubmissionsSection({
   regeneratingId,
   onPrevPage,
   onNextPage,
+  readOnly,
 }: {
   submissions: SubmissionsResponse | null;
   loading: boolean;
@@ -2240,6 +2288,7 @@ function SubmissionsSection({
   regeneratingId: string | null;
   onPrevPage: () => void;
   onNextPage: () => void;
+  readOnly?: boolean;
 }) {
   return (
     <>
@@ -2247,14 +2296,16 @@ function SubmissionsSection({
         <table className="admin-table">
           <thead>
             <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  className="admin-checkbox"
-                  checked={!!submissions && submissions.data.length > 0 && submissions.data.every((s) => selectedIds.has(s.id))}
-                  onChange={onToggleAll}
-                />
-              </th>
+              {!readOnly && (
+                <th>
+                  <input
+                    type="checkbox"
+                    className="admin-checkbox"
+                    checked={!!submissions && submissions.data.length > 0 && submissions.data.every((s) => selectedIds.has(s.id))}
+                    onChange={onToggleAll}
+                  />
+                </th>
+              )}
               <th>#</th>
               <th>Name</th>
               <th>Phone</th>
@@ -2272,14 +2323,16 @@ function SubmissionsSection({
             {submissions && submissions.data.length > 0 ? (
               submissions.data.map((s, i) => (
                 <tr key={s.id}>
-                  <td>
-                    <input
-                      type="checkbox"
-                      className="admin-checkbox"
-                      checked={selectedIds.has(s.id)}
-                      onChange={() => onToggleRow(s.id)}
-                    />
-                  </td>
+                  {!readOnly && (
+                    <td>
+                      <input
+                        type="checkbox"
+                        className="admin-checkbox"
+                        checked={selectedIds.has(s.id)}
+                        onChange={() => onToggleRow(s.id)}
+                      />
+                    </td>
+                  )}
                   <td>{(submissions.page - 1) * submissions.limit + i + 1}</td>
                   <td>{s.name}</td>
                   <td style={{ fontFamily: 'monospace' }}>{s.phone}</td>
@@ -2354,7 +2407,7 @@ function SubmissionsSection({
                       >
                         ↓↓
                       </button>
-                      {s.status === 'failed' && (
+                      {!readOnly && s.status === 'failed' && (
                         <button
                           className="btn-secondary admin-btn-sm"
                           onClick={() => onRegenerate(s.id)}
@@ -2364,16 +2417,18 @@ function SubmissionsSection({
                           {regeneratingId === s.id ? 'Queuing…' : 'Regenerate'}
                         </button>
                       )}
-                      <button className="admin-delete-btn" onClick={() => onDeleteOne(s.id)} title="Delete submission">
-                        Delete
-                      </button>
+                      {!readOnly && (
+                        <button className="admin-delete-btn" onClick={() => onDeleteOne(s.id)} title="Delete submission">
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="admin-empty-cell">
+                <td colSpan={readOnly ? 11 : 12} className="admin-empty-cell">
                   {loading ? 'Loading…' : 'No submissions yet'}
                 </td>
               </tr>
@@ -2799,6 +2854,7 @@ function UsersSection({
           <tr>
             <th>Username</th>
             <th>Display Name</th>
+            <th>Role</th>
             <th>Last Login</th>
             <th>Created</th>
             <th>Actions</th>
@@ -2809,6 +2865,11 @@ function UsersSection({
             <tr key={u.id}>
               <td>{u.username}</td>
               <td>{u.displayName}</td>
+              <td>
+                <span className={`admin-badge ${u.role === 'client' ? 'admin-badge-queued' : 'admin-badge-generated'}`}>
+                  {u.role === 'client' ? 'Client (read-only)' : 'Admin'}
+                </span>
+              </td>
               <td>{u.lastLoginAt ? timeAgo(u.lastLoginAt) : 'never'}</td>
               <td>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}</td>
               <td>

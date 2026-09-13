@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       console.error('[API] Get face swap settings error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function PUT(req: NextRequest) {
@@ -46,5 +46,5 @@ export async function PUT(req: NextRequest) {
       console.error('[API] Update face swap settings error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

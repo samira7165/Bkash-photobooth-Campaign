@@ -136,6 +136,7 @@ model AdminUser {
   username     String    @unique @db.VarChar(50)
   passwordHash String    @db.VarChar(255)
   displayName  String    @db.VarChar(100)
+  role         String    @default("admin") @db.VarChar(20)
   lastLoginAt  DateTime?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

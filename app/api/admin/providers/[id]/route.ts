@@ -51,7 +51,7 @@ export async function PUT(
       console.error('[API] Update provider error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function DELETE(
@@ -77,5 +77,5 @@ export async function DELETE(
       console.error('[API] Delete provider error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

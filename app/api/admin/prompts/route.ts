@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
       console.error('[API] List prompt templates error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function POST(req: NextRequest) {
@@ -101,5 +101,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Create prompt template error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

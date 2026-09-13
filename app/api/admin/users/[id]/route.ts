@@ -6,9 +6,12 @@ const USER_SELECT = {
   id: true,
   username: true,
   displayName: true,
+  role: true,
   lastLoginAt: true,
   createdAt: true,
 } as const;
+
+const VALID_ROLES = ['admin', 'client'];
 
 export async function PUT(
   req: NextRequest,
@@ -16,14 +19,17 @@ export async function PUT(
 ) {
   return withAdminAuth(req, async (req) => {
     try {
-      const { displayName } = await req.json();
+      const { displayName, role } = await req.json();
       if (!displayName?.trim()) {
         return NextResponse.json({ message: 'displayName is required' }, { status: 400 });
+      }
+      if (role && !VALID_ROLES.includes(role)) {
+        return NextResponse.json({ message: 'Invalid role' }, { status: 400 });
       }
 
       const user = await prisma.adminUser.update({
         where: { id: params.id },
-        data: { displayName: displayName.trim() },
+        data: { displayName: displayName.trim(), ...(role ? { role } : {}) },
         select: USER_SELECT,
       });
 
@@ -35,7 +41,7 @@ export async function PUT(
       console.error('[API] Update admin user error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function DELETE(
@@ -61,5 +67,5 @@ export async function DELETE(
       console.error('[API] Delete admin user error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

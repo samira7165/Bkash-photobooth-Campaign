@@ -28,5 +28,5 @@ export async function PUT(
       console.error('[API] Reset password error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
