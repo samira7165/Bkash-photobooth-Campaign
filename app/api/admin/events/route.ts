@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       console.error('[API] List events error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function POST(req: NextRequest) {
@@ -70,5 +70,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Create event error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

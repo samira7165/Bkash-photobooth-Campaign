@@ -34,5 +34,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Preview prompt error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

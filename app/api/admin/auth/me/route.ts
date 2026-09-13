@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
       id: admin.id,
       username: admin.username,
       displayName: admin.displayName,
+      role: admin.role,
       lastLoginAt: admin.lastLoginAt,
     });
   });

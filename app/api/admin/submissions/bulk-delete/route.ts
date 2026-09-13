@@ -39,5 +39,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Bulk delete submissions error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

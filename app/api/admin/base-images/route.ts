@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       console.error('[API] List base images error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function POST(req: NextRequest) {
@@ -96,5 +96,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Create base image error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

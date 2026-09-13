@@ -39,5 +39,5 @@ export async function DELETE(
       console.error('[API] Delete participant error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }

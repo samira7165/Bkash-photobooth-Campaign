@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       console.error('[API] List providers error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
 
 export async function POST(req: NextRequest) {
@@ -62,5 +62,5 @@ export async function POST(req: NextRequest) {
       console.error('[API] Create provider error:', error.message);
       return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
     }
-  });
+  }, { roles: ['admin'] });
 }
