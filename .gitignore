@@ -15,3 +15,4 @@ uploads/rendered/*
 !uploads/comic/.gitkeep
 !uploads/rendered/.gitkeep
 .DS_Store
+tsconfig.tsbuildinfo
