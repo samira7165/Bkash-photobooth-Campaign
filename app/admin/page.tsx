@@ -178,6 +178,7 @@ const STATUS_LABELS: Record<string, string> = {
   generated: 'Generated',
   sms_sent: 'SMS Sent',
   failed: 'Failed',
+  no_image: 'No Photo',
 };
 
 const STATUS_HEX: Record<string, string> = {
@@ -189,12 +190,17 @@ const STATUS_HEX: Record<string, string> = {
   generated: '#2ecc71',
   sms_sent: '#1abc9c',
   failed: '#e74c3c',
+  no_image: '#95a5a6',
 };
 
 const COOLDOWN_MS = 10 * 60 * 1000;
 
 function downloadUrl(sessionId: string, type: 'original' | 'generated') {
   return `/api/images/download/${sessionId}/${type}`;
+}
+
+function participantImageUrl(participantId: string, type: 'original' | 'generated') {
+  return `/api/admin/participants/${participantId}/image/${type}`;
 }
 
 function triggerDownload(href: string) {
@@ -1286,6 +1292,7 @@ export default function AdminPage() {
             onRegenerate={handleRegenerateParticipant}
             regeneratingId={regeneratingId}
             onDeleteOne={(id) => setConfirmAction({ kind: 'participant', id })}
+            onLightbox={setLightboxSrc}
           />
         )}
 
@@ -2479,6 +2486,7 @@ function ParticipantsSection({
   onRegenerate,
   regeneratingId,
   onDeleteOne,
+  onLightbox,
 }: {
   stats: ParticipantStats | null;
   events: EventData[];
@@ -2501,6 +2509,7 @@ function ParticipantsSection({
   onRegenerate: (id: string) => void;
   regeneratingId: string | null;
   onDeleteOne: (id: string) => void;
+  onLightbox: (src: string) => void;
 }) {
   const [uploadingComicBookFor, setUploadingComicBookFor] = useState<string | null>(null);
 
@@ -2528,6 +2537,10 @@ function ParticipantsSection({
         <div className="admin-stat-card">
           <div className="admin-stat-num info">{stats?.totalDownloads ?? '—'}</div>
           <div className="admin-stat-label">Total Downloads</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num info">{stats?.totalComicDownloads ?? '—'}</div>
+          <div className="admin-stat-label">Comic Book Downloads</div>
         </div>
       </div>
 
@@ -2678,6 +2691,8 @@ function ParticipantsSection({
               <th>College</th>
               <th>Event</th>
               <th>Status</th>
+              <th>Original</th>
+              <th>Generated</th>
               <th>Downloads</th>
               <th>Created</th>
               <th>Actions</th>
@@ -2697,6 +2712,54 @@ function ParticipantsSection({
                     <span className={`admin-badge admin-badge-${p.processingStatus}`}>
                       {STATUS_LABELS[p.processingStatus] || p.processingStatus}
                     </span>
+                  </td>
+                  <td>
+                    <div className="admin-thumb-cell">
+                      {p.hasOriginalImage ? (
+                        <>
+                          <img
+                            className="admin-thumb"
+                            src={participantImageUrl(p.id, 'original')}
+                            alt="Original"
+                            onClick={() => onLightbox(participantImageUrl(p.id, 'original'))}
+                          />
+                          <a
+                            className="admin-dl-btn"
+                            href={`${participantImageUrl(p.id, 'original')}?download=1`}
+                            download
+                            title="Download original"
+                          >
+                            ↓
+                          </a>
+                        </>
+                      ) : (
+                        <div className="admin-thumb admin-thumb-placeholder">—</div>
+                      )}
+                    </div>
+                  </td>
+                  <td>
+                    <div className="admin-thumb-cell">
+                      {p.hasGeneratedImage ? (
+                        <>
+                          <img
+                            className="admin-thumb"
+                            src={participantImageUrl(p.id, 'generated')}
+                            alt="Generated"
+                            onClick={() => onLightbox(participantImageUrl(p.id, 'generated'))}
+                          />
+                          <a
+                            className="admin-dl-btn"
+                            href={`${participantImageUrl(p.id, 'generated')}?download=1`}
+                            download
+                            title="Download generated"
+                          >
+                            ↓
+                          </a>
+                        </>
+                      ) : (
+                        <div className="admin-thumb admin-thumb-placeholder">—</div>
+                      )}
+                    </div>
                   </td>
                   <td>{p.downloadCount}</td>
                   <td>{timeAgo(p.createdAt)}</td>
@@ -2721,7 +2784,7 @@ function ParticipantsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={10} className="admin-empty-cell">
+                <td colSpan={12} className="admin-empty-cell">
                   {participantsLoading ? 'Loading…' : 'No participants yet'}
                 </td>
               </tr>

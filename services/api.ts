@@ -278,6 +278,8 @@ export interface ParticipantRow {
   eventName: string;
   processingStatus: string;
   downloadCount: number;
+  hasOriginalImage: boolean;
+  hasGeneratedImage: boolean;
   createdAt: string;
 }
 
@@ -311,6 +313,7 @@ export interface ParticipantStats {
   totalParticipants: number;
   totalCompletedImages: number;
   totalDownloads: number;
+  totalComicDownloads: number;
   totalOtpSent: number;
   otpVerified: number;
   otpFailed: number;

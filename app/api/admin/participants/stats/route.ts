@@ -11,6 +11,7 @@ export async function GET(req: NextRequest) {
         totalParticipants,
         totalCompletedImages,
         downloadAgg,
+        comicDownloadAgg,
         events,
         totalOtpSent,
         otpVerified,
@@ -21,6 +22,7 @@ export async function GET(req: NextRequest) {
         prisma.participant.count(),
         prisma.image.count({ where: { processingStatus: { in: ['generated', 'sms_sent'] } } }),
         prisma.image.aggregate({ _sum: { downloadCount: true } }),
+        prisma.image.aggregate({ _sum: { comicDownloadCount: true } }),
         prisma.event.findMany({
           select: { id: true, name: true, _count: { select: { participants: true } } },
           orderBy: { createdAt: 'desc' },
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
         totalParticipants,
         totalCompletedImages,
         totalDownloads: downloadAgg._sum.downloadCount || 0,
+        totalComicDownloads: comicDownloadAgg._sum.comicDownloadCount || 0,
         totalOtpSent,
         otpVerified,
         otpFailed,

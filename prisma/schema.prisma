@@ -45,6 +45,7 @@ model Session {
   smsLastAttemptAt      DateTime?
   queuePosition         Int?
   downloadCount         Int           @default(0)
+  comicDownloadCount    Int           @default(0)
   errorMessage          String?       @db.Text
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
@@ -224,6 +225,7 @@ model Image {
   renderedAiPath       String?               @db.VarChar(500)
   processingStatus     ImageProcessingStatus @default(queued)
   downloadCount        Int                   @default(0)
+  comicDownloadCount   Int                   @default(0)
   errorMessage         String?               @db.Text
   smsSent              Boolean               @default(false)
   smsAttempts          Int                   @default(0)

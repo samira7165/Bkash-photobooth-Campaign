@@ -189,6 +189,16 @@ export default function ExperienceCamera({ participantId, careerLabel, onComplet
         <div className="cam-corner tr" />
         <div className="cam-corner bl" />
         <div className="cam-corner br" />
+
+        {uploading && (
+          <div className="cam-upload-overlay" role="alert">
+            <div className="cam-upload-card">
+              <span className="kiosk-spinner-lg" />
+              <p>Uploading your photo…</p>
+              <span>Please don&apos;t close this page or turn off your phone.<br />This can take a little longer on a slow connection.</span>
+            </div>
+          </div>
+        )}
       </div>
 
       {error && <p className="field-err" style={{ textAlign: 'center' }}>{error}</p>}
@@ -220,9 +230,6 @@ export default function ExperienceCamera({ participantId, careerLabel, onComplet
             <span>{uploading ? 'Uploading…' : 'Continue'}</span>
             <span className="btn-arrow">→</span>
           </button>
-          {uploading && (
-            <p className="cam-hint" role="alert">Please don&apos;t close this page or turn off your phone while your photo uploads.</p>
-          )}
         </>
       )}
     </div>

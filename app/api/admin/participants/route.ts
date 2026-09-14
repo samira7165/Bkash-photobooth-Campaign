@@ -43,8 +43,15 @@ export async function GET(req: NextRequest) {
         career: p.career,
         college: p.college,
         eventName: p.event.name,
-        processingStatus: p.images[0]?.processingStatus || 'queued',
+        // A participant with no Image row at all never had a photo reach
+        // the server (dropped connection, closed the app, etc.) — distinct
+        // from "queued", which means a real job is genuinely waiting on the
+        // worker. Reusing "queued" for both made a stalled real job
+        // indistinguishable from someone who just never uploaded anything.
+        processingStatus: p.images[0]?.processingStatus || 'no_image',
         downloadCount: p.images[0]?.downloadCount || 0,
+        hasOriginalImage: !!p.images[0]?.originalImageUrl,
+        hasGeneratedImage: !!p.images[0]?.aiImageUrl,
         createdAt: p.createdAt,
       }));
 

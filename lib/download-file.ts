@@ -83,7 +83,13 @@ export async function serveDownloadFile(
       dreamJob = image.participant.career;
       downloadFilenameBase = `dream_career_${sanitize(image.participant.name)}_${sanitize(image.participant.career)}`;
       incrementDownload = async () => {
-        await prisma.image.update({ where: { id: image.id }, data: { downloadCount: { increment: 1 } } });
+        await prisma.image.update({
+          where: { id: image.id },
+          data: {
+            downloadCount: { increment: 1 },
+            ...(type === 'comic-book' ? { comicDownloadCount: { increment: 1 } } : {}),
+          },
+        });
       };
       persistRenderedPath = async (p) => {
         const data = type === 'original' ? { renderedOriginalPath: p } : { renderedAiPath: p };
@@ -120,7 +126,13 @@ export async function serveDownloadFile(
       downloadFilenameBase = `dream_job_${sanitize(bSession.name)}_${sanitize(bSession.customJob || bSession.selectedJob || 'job')}`;
       dreamJob = bSession.customJob || bSession.selectedJob || '';
       incrementDownload = async () => {
-        await prisma.session.update({ where: { id: bSession.id }, data: { downloadCount: { increment: 1 } } });
+        await prisma.session.update({
+          where: { id: bSession.id },
+          data: {
+            downloadCount: { increment: 1 },
+            ...(type === 'comic-book' ? { comicDownloadCount: { increment: 1 } } : {}),
+          },
+        });
       };
       persistRenderedPath = async (p) => {
         const data = type === 'original' ? { renderedOriginalPath: p } : { renderedGeneratedPath: p };
