@@ -278,6 +278,7 @@ export interface ParticipantRow {
   eventName: string;
   processingStatus: string;
   downloadCount: number;
+  comicDownloadCount: number;
   hasOriginalImage: boolean;
   hasGeneratedImage: boolean;
   createdAt: string;
@@ -359,6 +360,8 @@ export interface Submission {
   status: string;
   hasOriginalImage: boolean;
   hasGeneratedImage: boolean;
+  downloadCount: number;
+  comicDownloadCount: number;
   smsSent: boolean;
   errorMessage?: string | null;
   createdAt: string;

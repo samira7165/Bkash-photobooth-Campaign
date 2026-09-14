@@ -48,6 +48,8 @@ export async function GET(req: NextRequest) {
         status: s.status,
         hasOriginalImage: !!s.originalImagePath,
         hasGeneratedImage: !!s.generatedImagePath,
+        downloadCount: s.downloadCount,
+        comicDownloadCount: s.comicDownloadCount,
         smsSent: s.smsSent,
         errorMessage: s.errorMessage,
         createdAt: s.createdAt,

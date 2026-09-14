@@ -50,6 +50,7 @@ export async function GET(req: NextRequest) {
         // indistinguishable from someone who just never uploaded anything.
         processingStatus: p.images[0]?.processingStatus || 'no_image',
         downloadCount: p.images[0]?.downloadCount || 0,
+        comicDownloadCount: p.images[0]?.comicDownloadCount || 0,
         hasOriginalImage: !!p.images[0]?.originalImageUrl,
         hasGeneratedImage: !!p.images[0]?.aiImageUrl,
         createdAt: p.createdAt,

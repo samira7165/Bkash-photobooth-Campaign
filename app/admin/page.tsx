@@ -2322,6 +2322,8 @@ function SubmissionsSection({
               <th>Status</th>
               <th>Original</th>
               <th>Generated</th>
+              <th>Downloads</th>
+              <th>Comic DL</th>
               <th>Date</th>
               <th>Actions</th>
             </tr>
@@ -2399,6 +2401,8 @@ function SubmissionsSection({
                       )}
                     </div>
                   </td>
+                  <td>{s.downloadCount}</td>
+                  <td>{s.comicDownloadCount}</td>
                   <td>{timeAgo(s.createdAt)}</td>
                   <td>
                     <div className="admin-row-actions">
@@ -2435,7 +2439,7 @@ function SubmissionsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={readOnly ? 11 : 12} className="admin-empty-cell">
+                <td colSpan={readOnly ? 13 : 14} className="admin-empty-cell">
                   {loading ? 'Loading…' : 'No submissions yet'}
                 </td>
               </tr>
@@ -2694,6 +2698,7 @@ function ParticipantsSection({
               <th>Original</th>
               <th>Generated</th>
               <th>Downloads</th>
+              <th>Comic DL</th>
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -2762,6 +2767,7 @@ function ParticipantsSection({
                     </div>
                   </td>
                   <td>{p.downloadCount}</td>
+                  <td>{p.comicDownloadCount}</td>
                   <td>{timeAgo(p.createdAt)}</td>
                   <td>
                     <div className="admin-row-actions">
@@ -2784,7 +2790,7 @@ function ParticipantsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={12} className="admin-empty-cell">
+                <td colSpan={13} className="admin-empty-cell">
                   {participantsLoading ? 'Loading…' : 'No participants yet'}
                 </td>
               </tr>

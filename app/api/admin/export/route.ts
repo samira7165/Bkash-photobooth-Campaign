@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
       const career = searchParams.get('career');
 
       const rows: string[] = [
-        toCsvRow(['Source', 'Name', 'Phone', 'Gender', 'Job/Career', 'College', 'Event', 'Status', 'Downloads', 'Created At']),
+        toCsvRow(['Source', 'Name', 'Phone', 'Gender', 'Job/Career', 'College', 'Event', 'Status', 'Downloads', 'Comic Downloads', 'Created At']),
       ];
 
       if (source === 'all' || source === 'booth') {
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         for (const s of sessions) {
           rows.push(toCsvRow([
             'Booth', s.name, s.phone, s.gender, s.customJob || s.selectedJob || '', s.college || '',
-            '', s.status, s.downloadCount, s.createdAt.toISOString(),
+            '', s.status, s.downloadCount, s.comicDownloadCount, s.createdAt.toISOString(),
           ]));
         }
       }
@@ -66,7 +66,8 @@ export async function GET(req: NextRequest) {
           const image = p.images[0];
           rows.push(toCsvRow([
             'Mobile', p.name, p.phone, p.gender, p.career, p.college || '',
-            p.event.name, image?.processingStatus || 'queued', image?.downloadCount || 0, p.createdAt.toISOString(),
+            p.event.name, image?.processingStatus || 'no_image', image?.downloadCount || 0, image?.comicDownloadCount || 0,
+            p.createdAt.toISOString(),
           ]));
         }
       }
