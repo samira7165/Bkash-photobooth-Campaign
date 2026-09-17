@@ -60,12 +60,13 @@ function customCareerTextLayer(job: string, width: number, height: number): Buff
   const taglineY = jobY + Math.round(taglineFontSize * 2.2);
 
   // others.png has its own script text/icons starting almost immediately
-  // below the top border, so the job title needs a solid backing band —
-  // otherwise the text and the frame's own artwork just visually clash
-  // instead of the title cleanly winning that space.
-  const bandTop = Math.round(height * 0.018);
-  const bandBottom = taglineY + Math.round(taglineFontSize * 1.6);
-  const bandInset = Math.round(width * 0.035);
+  // below the top border, so the job title needs a backing band — otherwise
+  // the text and the frame's own artwork just visually clash instead of the
+  // title cleanly winning that space. Full-bleed (no inset, no rounded
+  // corners) and fading to fully transparent at the bottom, rather than a
+  // hard-edged rect, so it reads as an intentional top banner rather than a
+  // pasted-on box floating over the photo.
+  const bandBottom = taglineY + Math.round(taglineFontSize * 2.2);
 
   const svg = `
     <svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
@@ -79,11 +80,12 @@ function customCareerTextLayer(job: string, width: number, height: number): Buff
           </feMerge>
         </filter>
         <linearGradient id="customCareerBand" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style="stop-color:#0b1b3a;stop-opacity:0.92" />
-          <stop offset="100%" style="stop-color:#0b1b3a;stop-opacity:0.8" />
+          <stop offset="0%" style="stop-color:#000000;stop-opacity:0.82" />
+          <stop offset="65%" style="stop-color:#000000;stop-opacity:0.6" />
+          <stop offset="100%" style="stop-color:#000000;stop-opacity:0" />
         </linearGradient>
       </defs>
-      <rect x="${bandInset}" y="${bandTop}" width="${width - bandInset * 2}" height="${bandBottom - bandTop}" rx="18" fill="url(#customCareerBand)"/>
+      <rect x="0" y="0" width="${width}" height="${bandBottom}" fill="url(#customCareerBand)"/>
       <text x="${width / 2}" y="${futureY}" font-family="sans-serif" font-size="${futureFontSize}" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="hanging" letter-spacing="6" filter="url(#customCareerGlow)">
         FUTURE
       </text>
