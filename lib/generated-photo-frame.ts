@@ -50,12 +50,12 @@ function customCareerTextLayer(job: string, width: number, height: number): Buff
   const maxLineWidth = width * 0.82;
   const AVG_CHAR_WIDTH_RATIO = 0.68; // bold uppercase sans-serif, approximate
   const jobFontSize = Math.min(
-    Math.round(width * 0.08),
+    Math.round(width * 0.066),
     Math.floor(maxLineWidth / (jobLine.length * AVG_CHAR_WIDTH_RATIO)),
   );
-  const futureFontSize = Math.round(width * 0.055);
-  const taglineFontSize = Math.round(width * 0.022);
-  const futureY = Math.round(height * 0.048);
+  const futureFontSize = Math.round(width * 0.044);
+  const taglineFontSize = Math.round(width * 0.018);
+  const futureY = Math.round(height * 0.042);
   const jobY = futureY + Math.round(jobFontSize * 1.05);
   const taglineY = jobY + Math.round(taglineFontSize * 2.2);
 
