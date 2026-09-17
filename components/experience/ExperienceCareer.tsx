@@ -8,7 +8,7 @@ import { ExperienceInfoData } from './ExperienceInfo';
 const CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer',
 ];
 
 interface Props {

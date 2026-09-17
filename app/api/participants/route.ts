@@ -6,7 +6,7 @@ import { verifyDownloadSessionToken, DOWNLOAD_SESSION_COOKIE } from '@/lib/downl
 const VALID_CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer', 
 ];
 
 export async function POST(req: NextRequest) {

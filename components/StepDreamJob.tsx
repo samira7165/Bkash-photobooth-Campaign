@@ -7,7 +7,7 @@ import { selectJob } from '@/services/api';
 const JOBS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer', 
 ];
 
 interface Props {

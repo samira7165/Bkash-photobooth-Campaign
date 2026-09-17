@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 const VALID_JOBS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer',
 ];
 
 export async function POST(

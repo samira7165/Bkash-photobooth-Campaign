@@ -96,7 +96,7 @@ const SECTION_TITLES: Record<Section, string> = {
 const JOB_OPTIONS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer',
 ];
 
 // Mirrors lib/prompt-builder.ts's getAvailableVariables() — duplicated here
