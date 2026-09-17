@@ -126,39 +126,14 @@ function getPromptVariables(): { variable: string; description: string; example:
   ];
 }
 
-// Variable reference shown specifically when editing the custom "Other"
-// career template (OpenAI path). Career-descriptive ones (tools, pose,
-// tagline, features, bottom statement, color theme, frame, typography) are
-// NOT literal substitution tokens — custom jobs are unbounded free text, so
-// there's no lookup table for them. The template instead describes them in
-// prose asking the model to compose each one based on {{job}}; typing the
-// {{...}} form of these into the prompt text will NOT resolve to anything.
-function getCustomJobPromptVariables(): { variable: string; description: string; example: string }[] {
-  return [
-    { variable: '{{name}}', description: "User's name", example: 'Samira' },
-    { variable: '{{gender}}', description: 'Raw gender value', example: 'male / female' },
-    { variable: '{{genderWord}}', description: 'Man or Woman', example: 'man / woman' },
-    { variable: '{{job}}', description: 'Custom career as typed by the user', example: 'Chef, Architect, Astronaut' },
-    { variable: '{{job_uppercase}}', description: 'Career in uppercase — for headline text', example: 'CHEF' },
-    { variable: '{{job_lower}}', description: 'Career in lowercase', example: 'chef' },
-    { variable: '{{job_clothing}}', description: 'Generic professional attire description', example: 'appropriate professional chef uniform, attire, and gear' },
-    { variable: '{{job_surroundings}}', description: 'Generic professional environment description', example: 'a realistic, authentic professional workplace setting for a chef' },
-    { variable: '{{professional_tools}}', description: 'AI-composed, not a literal token — describe in prose: "equip them with tools a real {{job}} would use"', example: 'stethoscope, blueprint, camera — decided per job by the AI' },
-    { variable: '{{job_pose}}', description: 'AI-composed, not a literal token — describe in prose: "choose a pose that fits a {{job}}"', example: 'holding a whisk, standing at a drafting table — decided by the AI' },
-    { variable: '{{career_tagline}}', description: 'AI-composed, not a literal token — ask the model to "compose an original 3-6 word tagline for {{job}}"', example: 'HEAL TODAY. SAVE TOMORROW.' },
-    { variable: '{{feature_1}}', description: 'AI-composed, not a literal token — one of three short highlight phrases the model writes for {{job}}', example: 'MASTER YOUR SKILLS' },
-    { variable: '{{feature_2}}', description: 'AI-composed, not a literal token', example: 'CREATE NEW POSSIBILITIES' },
-    { variable: '{{feature_3}}', description: 'AI-composed, not a literal token', example: 'TURN PASSION INTO SUCCESS' },
-    { variable: '{{bottom_statement_line_1}}', description: 'AI-composed, not a literal token — two-line motivational statement for {{job}}', example: 'TURN PASSION' },
-    { variable: '{{bottom_statement_line_2}}', description: 'AI-composed, not a literal token', example: 'INTO IMPACT' },
-    { variable: '{{career_color_theme}}', description: 'AI-composed, not a literal token — ask the model to "pick a palette that fits {{job}}"', example: 'clean medical blue and white for a doctor' },
-    { variable: '{{frame_style}}', description: 'AI-composed, not a literal token — describe the frame directly in the FRAME section of the prompt', example: 'double-line white ornamental frame with corner ornaments' },
-    { variable: '{{typography_style}}', description: 'AI-composed, not a literal token — describe type treatment directly where each text element is introduced', example: 'bold uppercase sans-serif with drop shadow' },
-    { variable: '{{face_preservation_instruction}}', description: 'Strict instruction to keep user face and identity unchanged', example: 'Preserve the exact same person, face...' },
-    { variable: '{{imageBase64}}', description: 'Base64 encoded user photo (request body only)', example: '' },
-    { variable: '{{negativePrompt}}', description: 'Resolved negative prompt (request body only)', example: '' },
-  ];
-}
+// The custom "Other" career template resolves variables through the exact
+// same lib/prompt-builder.ts logic as the 12 known-career templates (no
+// special-casing — see resolveVariables) — this used to list a separate set
+// of AI-composed, non-functional pseudo-variables tuned for the old
+// OpenAI-routed, model-drawn-frame approach. Custom careers now go through
+// Gemini and get a code-drawn "FUTURE {JOB}" banner instead (see
+// lib/generated-photo-frame.ts), so the real variable list below applies
+// identically to both template kinds.
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Statuses' },
@@ -1526,7 +1501,7 @@ export default function AdminPage() {
                     checked={promptForm.isDefaultForCustom}
                     onChange={(e) => setPromptForm((f) => ({ ...f, isDefaultForCustom: e.target.checked }))}
                   />
-                  Set as Default for Custom &quot;Other&quot; Careers (OpenAI)
+                  Set as Default for Custom &quot;Other&quot; Careers (Gemini)
                 </label>
               </div>
 
@@ -1546,10 +1521,10 @@ export default function AdminPage() {
 
               <div className="admin-variables-panel">
                 <div className="admin-variables-title">
-                  Available Variables {promptForm.isDefaultForCustom && '(Custom "Other" Career)'}
+                  Available Variables
                 </div>
                 <div className="admin-variables-grid">
-                  {(promptForm.isDefaultForCustom ? getCustomJobPromptVariables() : getPromptVariables()).map((v) => (
+                  {getPromptVariables().map((v) => (
                     <div className="admin-variable-item" key={v.variable}>
                       <code className="admin-variable-code">{v.variable}</code>
                       <span className="admin-variable-desc">{v.description}</span>

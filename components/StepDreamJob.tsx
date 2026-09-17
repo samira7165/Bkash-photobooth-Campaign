@@ -7,7 +7,7 @@ import { selectJob } from '@/services/api';
 const JOBS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
 ];
 
 interface Props {
@@ -17,6 +17,7 @@ interface Props {
 
 export default function StepDreamJob({ sessionId, onComplete }: Props) {
   const [selected, setSelected] = useState('');
+  const [customJob, setCustomJob] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -27,13 +28,17 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
 
   const submit = async () => {
     if (!selected) return;
+    if (selected === 'Other' && !customJob.trim()) {
+      setError('Please tell us your dream job');
+      return;
+    }
 
     setLoading(true);
 
     try {
-      await selectJob(sessionId, { job: selected });
+      await selectJob(sessionId, { job: selected, customJob: selected === 'Other' ? customJob.trim() : undefined });
 
-      onComplete(selected, '');
+      onComplete(selected, selected === 'Other' ? customJob.trim() : '');
 
     } catch (err: any) {
       setError(err.message);
@@ -94,6 +99,21 @@ export default function StepDreamJob({ sessionId, onComplete }: Props) {
 
       </div>
 
+
+      {selected === 'Other' && (
+        <div className="kiosk-field">
+          <label htmlFor="custom-job">What's your dream job?</label>
+          <input
+            id="custom-job"
+            type="text"
+            value={customJob}
+            onChange={(e) => setCustomJob(e.target.value)}
+            placeholder="e.g. Chef, Architect, Astronaut"
+            maxLength={100}
+            autoFocus
+          />
+        </div>
+      )}
 
       {error && (
         <p

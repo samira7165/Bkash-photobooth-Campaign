@@ -1,3 +1,4 @@
+import './sharp-config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -134,10 +135,11 @@ async function generateDemoImage(
  * Generate the user's dream job photo via a direct image-to-image pipeline:
  * takes the user's captured photo and prompt, and transforms the user's
  * clothes and surroundings into their dream job while preserving their real
- * face. Routes to Gemini for the 12 known careers (which have their own
- * frame artwork composited on afterward) and to OpenAI for custom "Other"
- * careers (whose prompt asks the model to bake in its own frame, since
- * there's no artwork to overlay). Output is always normalized to
+ * face. Always routes to Gemini — the 12 known careers get their own frame
+ * artwork composited on afterward, and custom "Other" careers get a
+ * code-drawn "FUTURE {JOB}" banner instead (see
+ * lib/generated-photo-frame.ts), since there's no artwork to overlay for
+ * arbitrary user-typed job titles. Output is always normalized to
  * OUTPUT_WIDTH x OUTPUT_HEIGHT regardless of provider.
  */
 export async function generateImage(params: GenerateParams): Promise<string> {
@@ -162,12 +164,12 @@ export async function generateImage(params: GenerateParams): Promise<string> {
   const base64Image = imageBuffer.toString('base64');
 
   // Custom "Other" careers have no pre-made frame PNG (lib/generated-photo-frame.ts
-  // only covers the 12 known careers), so the frame has to come from the model
-  // itself instead of a code-composited overlay — and Gemini is tuned for the
-  // known-career prompts, so custom jobs go to OpenAI instead, using a
-  // separate admin-editable prompt template (isDefaultForCustom).
+  // only covers the 12 known careers) — they use a separate admin-editable
+  // prompt template (isDefaultForCustom) and get a code-drawn "FUTURE {JOB}"
+  // banner composited on afterward instead of frame artwork, but generation
+  // itself still goes through the same Gemini provider/key as every other job.
   const customJob = isCustomCareer(job);
-  const preferredKind = customJob ? 'openai' : 'gemini';
+  const preferredKind = 'gemini';
 
   // Build the face-preserving prompt specifically engineered for dream job transformation
   const built = await buildPrompt(
@@ -180,7 +182,7 @@ export async function generateImage(params: GenerateParams): Promise<string> {
     customJob,
   );
 
-  console.log(`[AI] Prompt template: "${built.templateName}" (${customJob ? 'custom career -> OpenAI' : 'known career -> Gemini'})`);
+  console.log(`[AI] Prompt template: "${built.templateName}" (${customJob ? 'custom career' : 'known career'} -> Gemini)`);
   console.log(`[AI] Prompt: ${built.prompt}`);
   if (built.negativePrompt) {
     console.log(`[AI] Negative prompt: ${built.negativePrompt}`);

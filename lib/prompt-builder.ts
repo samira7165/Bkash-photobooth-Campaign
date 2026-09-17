@@ -236,17 +236,12 @@ export function resolveTemplate(
   return { prompt, negativePrompt, requestBody, templateName: fields.name, requestBodyError };
 }
 
-const CUSTOM_CAREER_FRAME_INSTRUCTION =
-  " Add a stylish decorative photo-frame border around the entire edge of the image, thematically " +
-  "matching this career, like a framed portrait card — the frame must sit within the outer 5-8% " +
-  "margin of the image and must not cover the subject's face.";
-
 /**
- * @param isCustomJob Custom "Other" careers (routed to OpenAI — see
- * lib/ai-generation.ts) have no pre-made frame PNG to composite afterward,
- * so they use a separate default template (isDefaultForCustom) whose prompt
- * asks the model to bake its own frame into the image, rather than the
- * template used for the 12 known careers.
+ * @param isCustomJob Custom "Other" careers have no pre-made frame PNG to
+ * composite afterward (see lib/generated-photo-frame.ts), so they use a
+ * separate default template (isDefaultForCustom) and get a code-drawn
+ * "FUTURE {JOB}" banner composited on afterward instead of frame artwork,
+ * rather than the template used for the 12 known careers.
  */
 export async function buildPrompt(ctx: PromptContext, imageBase64: string, isCustomJob = false): Promise<BuiltPrompt> {
   // 1. Use the configured default template for this job's category
@@ -261,8 +256,7 @@ export async function buildPrompt(ctx: PromptContext, imageBase64: string, isCus
   if (!template) {
     const promptJob = promptJobWord(ctx.job);
     const details = getJobClothingAndSetting(promptJob, ctx.gender);
-    let defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;
-    if (isCustomJob) defaultPrompt += CUSTOM_CAREER_FRAME_INSTRUCTION;
+    const defaultPrompt = `A high quality photorealistic portrait of the exact same person from the input photo. ${FACE_PRESERVATION_TEXT} Change their clothing and outfit into: ${details.clothing}. Change the background and surroundings into: ${details.surroundings}. Seamless composition, natural lighting, professional studio photography, crisp focus, 8k resolution, highly detailed.`;
     const defaultNegative =
       'different face, changed face, altered facial features, distorted eyes, bad anatomy, deformed hands, cartoon, 3d render, anime, illustration, painting, blurry, low resolution, artifacts, watermark, text, signature';
 

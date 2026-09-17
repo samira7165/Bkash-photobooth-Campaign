@@ -8,7 +8,7 @@ import { ExperienceInfoData } from './ExperienceInfo';
 const CAREERS = [
   'Military', 'Painter', 'Scientist', 'Professional Gamer',
   'Doctor', 'Engineer', 'Pilot', 'Journalist',
-  'Photographer', 'Lawyer', 'Singer', 'Footballer',
+  'Photographer', 'Lawyer', 'Singer', 'Footballer', 'Other',
 ];
 
 interface Props {
@@ -19,6 +19,7 @@ interface Props {
 
 export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
   const [selected, setSelected] = useState('');
+  const [customCareer, setCustomCareer] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -29,6 +30,10 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
 
   const submit = async () => {
     if (!selected) return;
+    if (selected === 'Other' && !customCareer.trim()) {
+      setError('Please tell us your dream job');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -40,9 +45,10 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
         college: info.college.trim() || undefined,
         gender: info.gender,
         career: selected,
+        customCareer: selected === 'Other' ? customCareer.trim() : undefined,
         eventId,
       });
-      onComplete(participantId, selected);
+      onComplete(participantId, selected === 'Other' ? customCareer.trim() : selected);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -84,6 +90,21 @@ export default function ExperienceCareer({ eventId, info, onComplete }: Props) {
           </button>
         ))}
       </div>
+
+      {selected === 'Other' && (
+        <div className="kiosk-field">
+          <label htmlFor="custom-career">What's your dream job?</label>
+          <input
+            id="custom-career"
+            type="text"
+            value={customCareer}
+            onChange={(e) => setCustomCareer(e.target.value)}
+            placeholder="e.g. Chef, Architect, Astronaut"
+            maxLength={100}
+            autoFocus
+          />
+        </div>
+      )}
 
       {error && <p className="field-err" style={{ textAlign: 'center' }}>{error}</p>}
 
