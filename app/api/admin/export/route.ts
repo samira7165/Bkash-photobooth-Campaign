@@ -27,6 +27,14 @@ export async function GET(req: NextRequest) {
       const search = searchParams.get('search')?.trim();
       const eventId = searchParams.get('eventId');
       const career = searchParams.get('career');
+      const fromParam = searchParams.get('from');
+      const toParam = searchParams.get('to');
+      // Day-based filtering — "from" and "to" are plain YYYY-MM-DD dates from
+      // the admin's date pickers, expanded to cover the full day in each
+      // direction so e.g. from=to=today includes every submission made today.
+      const createdAtFilter: { gte?: Date; lte?: Date } = {};
+      if (fromParam) createdAtFilter.gte = new Date(`${fromParam}T00:00:00.000`);
+      if (toParam) createdAtFilter.lte = new Date(`${toParam}T23:59:59.999`);
 
       const rows: string[] = [
         toCsvRow(['Source', 'Name', 'Phone', 'Gender', 'Job/Career', 'College', 'Event', 'Status', 'Downloads', 'Comic Downloads', 'Created At']),
@@ -37,6 +45,7 @@ export async function GET(req: NextRequest) {
         if (gender === 'male' || gender === 'female') where.gender = gender;
         if (status && status !== 'all') where.status = status;
         if (search) where.phone = { contains: search };
+        if (createdAtFilter.gte || createdAtFilter.lte) where.createdAt = createdAtFilter;
 
         const sessions = await prisma.session.findMany({ where, orderBy: { createdAt: 'desc' } });
         for (const s of sessions) {
@@ -53,6 +62,7 @@ export async function GET(req: NextRequest) {
         if (eventId && eventId !== 'all') where.eventId = eventId;
         if (career && career !== 'all') where.career = career;
         if (search) where.phone = { contains: search };
+        if (createdAtFilter.gte || createdAtFilter.lte) where.createdAt = createdAtFilter;
 
         const participants = await prisma.participant.findMany({
           where,
@@ -73,7 +83,10 @@ export async function GET(req: NextRequest) {
       }
 
       const csv = rows.join('\r\n');
-      const filename = `submissions_${source}_${gender}_${new Date().toISOString().slice(0, 10)}.csv`;
+      const dateSuffix = fromParam || toParam
+        ? `_${fromParam || 'start'}_to_${toParam || 'now'}`
+        : `_${new Date().toISOString().slice(0, 10)}`;
+      const filename = `submissions_${source}_${gender}${dateSuffix}.csv`;
 
       return new NextResponse(csv, {
         headers: {

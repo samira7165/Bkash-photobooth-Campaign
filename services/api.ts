@@ -548,6 +548,8 @@ export function exportCsvUrl(params: {
   search?: string;
   eventId?: string;
   career?: string;
+  from?: string;
+  to?: string;
 }): string {
   const qs = new URLSearchParams();
   if (params.source) qs.set('source', params.source);
@@ -556,6 +558,8 @@ export function exportCsvUrl(params: {
   if (params.search) qs.set('search', params.search);
   if (params.eventId) qs.set('eventId', params.eventId);
   if (params.career) qs.set('career', params.career);
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
   return `/api/admin/export?${qs.toString()}`;
 }
 

@@ -428,6 +428,8 @@ export default function AdminPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchPhone, setSearchPhone] = useState('');
   const [exportGenderFilter, setExportGenderFilter] = useState('all');
+  const [exportDateFrom, setExportDateFrom] = useState('');
+  const [exportDateTo, setExportDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [submissions, setSubmissions] = useState<SubmissionsResponse | null>(null);
   const [submissionsLoading, setSubmissionsLoading] = useState(true);
@@ -1103,16 +1105,39 @@ export default function AdminPage() {
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                 </select>
+                <span className="admin-date-label">From</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={exportDateFrom}
+                  onChange={(e) => setExportDateFrom(e.target.value)}
+                  title="Only export submissions created on/after this date"
+                />
+                <span className="admin-date-label">To</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={exportDateTo}
+                  onChange={(e) => setExportDateTo(e.target.value)}
+                  title="Only export submissions created on/before this date"
+                />
                 <a
                   className="btn-secondary admin-btn-inline"
-                  href={exportCsvUrl({ source: 'booth', gender: exportGenderFilter as any, status: statusFilter, search: searchPhone })}
+                  href={exportCsvUrl({
+                    source: 'booth',
+                    gender: exportGenderFilter as any,
+                    status: statusFilter,
+                    search: searchPhone,
+                    from: exportDateFrom,
+                    to: exportDateTo,
+                  })}
                   title="Export booth submissions as CSV"
                 >
                   Export Booth CSV
                 </a>
                 <a
                   className="btn-secondary admin-btn-inline"
-                  href={exportCsvUrl({ source: 'all', gender: 'all' })}
+                  href={exportCsvUrl({ source: 'all', gender: 'all', from: exportDateFrom, to: exportDateTo })}
                   title="Export every submission (booth + mobile) as CSV"
                 >
                   Export All CSV
@@ -1157,6 +1182,22 @@ export default function AdminPage() {
                   value={participantSearch}
                   onChange={(e) => setParticipantSearch(e.target.value)}
                 />
+                <span className="admin-date-label">From</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={exportDateFrom}
+                  onChange={(e) => setExportDateFrom(e.target.value)}
+                  title="Only export submissions created on/after this date"
+                />
+                <span className="admin-date-label">To</span>
+                <input
+                  type="date"
+                  className="admin-input"
+                  value={exportDateTo}
+                  onChange={(e) => setExportDateTo(e.target.value)}
+                  title="Only export submissions created on/before this date"
+                />
                 <a
                   className="btn-secondary admin-btn-inline"
                   href={exportCsvUrl({
@@ -1165,6 +1206,8 @@ export default function AdminPage() {
                     eventId: participantEventFilter,
                     career: participantCareerFilter,
                     search: participantSearch,
+                    from: exportDateFrom,
+                    to: exportDateTo,
                   })}
                   title="Export mobile submissions as CSV"
                 >
