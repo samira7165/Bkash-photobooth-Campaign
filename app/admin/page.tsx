@@ -960,6 +960,14 @@ export default function AdminPage() {
   }, [admin, section, loadProviders]);
 
   useEffect(() => {
+    // Client accounts can view the dashboard but can't call the providers
+    // endpoint (admin-only) — skip the fetch there instead of surfacing a
+    // Forbidden error toast on a page they're allowed to see.
+    if (!admin || section !== 'dashboard' || admin.role === 'client') return;
+    loadProviders();
+  }, [admin, section, loadProviders]);
+
+  useEffect(() => {
     if (!admin || section !== 'prompts') return;
     loadPromptTemplates();
   }, [admin, section, loadPromptTemplates]);
@@ -1177,6 +1185,7 @@ export default function AdminPage() {
             stats={dashStats}
             onViewAll={() => setSection('submissions')}
             restricted={admin.role === 'client'}
+            aiProviders={admin.role === 'client' ? null : providers.ai}
           />
         )}
 
@@ -1862,10 +1871,12 @@ function DashboardSection({
   stats,
   onViewAll,
   restricted,
+  aiProviders,
 }: {
   stats: DashboardStats | null;
   onViewAll: () => void;
   restricted?: boolean;
+  aiProviders?: Provider[] | null;
 }) {
   return (
     <>
@@ -1881,6 +1892,14 @@ function DashboardSection({
         <div className="admin-stat-card">
           <div className="admin-stat-num success">{stats?.totalGenerations ?? '—'}</div>
           <div className="admin-stat-label">Total AI Generations</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num success">{stats?.todayGenerations ?? '—'}</div>
+          <div className="admin-stat-label">Images Generated Today</div>
+        </div>
+        <div className="admin-stat-card">
+          <div className="admin-stat-num info">{stats?.totalComicDownloads ?? '—'}</div>
+          <div className="admin-stat-label">Comic Downloads (Booth + Mobile)</div>
         </div>
       </div>
       <div className="admin-stats-grid">
@@ -1907,6 +1926,54 @@ function DashboardSection({
           </div>
         )}
       </div>
+
+      {!restricted && aiProviders && aiProviders.length > 0 && (
+        <div className="admin-panel">
+          <div className="admin-panel-head">
+            <span className="admin-panel-title">AI Provider Health</span>
+          </div>
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Provider</th>
+                  <th>Status</th>
+                  <th>Model</th>
+                  <th>Fail Count</th>
+                  <th>Last Failure</th>
+                </tr>
+              </thead>
+              <tbody>
+                {aiProviders.map((p) => {
+                  const color = providerStatusColor(p);
+                  const misconfigured = p.isActive && !p.model;
+                  const label = !p.isActive
+                    ? 'Inactive'
+                    : misconfigured
+                    ? 'Misconfigured'
+                    : color === 'red'
+                    ? 'On Cooldown'
+                    : color === 'yellow'
+                    ? 'Degraded'
+                    : 'Healthy';
+                  return (
+                    <tr key={p.id}>
+                      <td>{p.name}</td>
+                      <td>
+                        <span className={`admin-status-dot admin-status-${misconfigured ? 'red' : color}`} title={label} />
+                        {' '}{label}
+                      </td>
+                      <td>{p.model || <span className="field-err">Not set</span>}</td>
+                      <td>{p.failCount}</td>
+                      <td>{p.lastFailAt ? timeAgo(p.lastFailAt) : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="admin-panel">
         <div className="admin-panel-head">
@@ -2015,9 +2082,9 @@ function AnalyticsSection({
       ) : (
         <div className="admin-chart-grid">
           <div className="admin-chart-block">
-            <div className="admin-chart-title">Sessions per Day</div>
+            <div className="admin-chart-title">Submissions per Day (Booth + Mobile)</div>
             {data.dailyCounts.length === 0 ? (
-              <div className="admin-empty">No sessions in this range</div>
+              <div className="admin-empty">No submissions in this range</div>
             ) : (
               data.dailyCounts.map((d) => (
                 <div className="admin-bar-row" key={d.date}>
@@ -2035,9 +2102,9 @@ function AnalyticsSection({
           </div>
 
           <div className="admin-chart-block">
-            <div className="admin-chart-title">Sessions by Status</div>
+            <div className="admin-chart-title">Submissions by Status</div>
             {data.byStatus.length === 0 ? (
-              <div className="admin-empty">No sessions in this range</div>
+              <div className="admin-empty">No submissions in this range</div>
             ) : (
               data.byStatus.map((d) => (
                 <div className="admin-bar-row" key={d.status}>
@@ -2058,9 +2125,9 @@ function AnalyticsSection({
           </div>
 
           <div className="admin-chart-block">
-            <div className="admin-chart-title">Sessions by Job</div>
+            <div className="admin-chart-title">Submissions by Career/Job</div>
             {data.byJob.length === 0 ? (
-              <div className="admin-empty">No sessions in this range</div>
+              <div className="admin-empty">No submissions in this range</div>
             ) : (
               data.byJob.map((d) => (
                 <div className="admin-bar-row" key={d.job}>

@@ -19,6 +19,10 @@ export async function GET(req: NextRequest) {
         smsSent,
         failed,
         recent,
+        todayBoothGenerations,
+        todayMobileGenerations,
+        boothComicDownloadAgg,
+        mobileComicDownloadAgg,
       ] = await Promise.all([
         prisma.session.count(),
         prisma.session.count({ where: { createdAt: { gte: today } } }),
@@ -31,12 +35,23 @@ export async function GET(req: NextRequest) {
           orderBy: { createdAt: 'desc' },
           take: 10,
         }),
+        // "Today" here means the image actually finished generating today —
+        // updatedAt tracks the last status transition, so this counts items
+        // that reached generated/sms_sent today, regardless of when the
+        // booth session or mobile participant was originally created.
+        prisma.session.count({ where: { status: { in: ['generated', 'sms_sent'] }, updatedAt: { gte: today } } }),
+        prisma.image.count({ where: { processingStatus: { in: ['generated', 'sms_sent'] }, updatedAt: { gte: today } } }),
+        prisma.session.aggregate({ _sum: { comicDownloadCount: true } }),
+        prisma.image.aggregate({ _sum: { comicDownloadCount: true } }),
       ]);
 
       return NextResponse.json({
         totalSessions,
         todaySessions,
         totalGenerations,
+        todayGenerations: todayBoothGenerations + todayMobileGenerations,
+        totalComicDownloads:
+          (boothComicDownloadAgg._sum.comicDownloadCount || 0) + (mobileComicDownloadAgg._sum.comicDownloadCount || 0),
         queued,
         processing,
         smsSent,

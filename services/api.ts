@@ -575,6 +575,8 @@ export interface DashboardStats {
   totalSessions: number;
   todaySessions: number;
   totalGenerations: number;
+  todayGenerations: number;
+  totalComicDownloads: number;
   queued: number;
   processing: number;
   smsSent: number;
