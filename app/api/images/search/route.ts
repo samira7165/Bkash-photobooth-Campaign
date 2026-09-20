@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { withAdminAuth } from '@/lib/admin-guard';
 import { normalizePhone, isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
+// Admin-only: looks up every booth submission for a phone number with no
+// OTP or other proof the requester owns that number — previously reachable
+// by anyone who knew a phone number, bypassing the OTP-verified download
+// portal entirely. Not called anywhere in the current frontend (customers
+// use /api/download/verify-otp + the download portal instead), kept here
+// as a staff lookup tool.
 export async function GET(req: NextRequest) {
+  return withAdminAuth(req, async () => {
   try {
     const phone = req.nextUrl.searchParams.get('phone');
 
@@ -60,4 +68,5 @@ export async function GET(req: NextRequest) {
     console.error('[API] Search by phone error:', error.message);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
+  });
 }

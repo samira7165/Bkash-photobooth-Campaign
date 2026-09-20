@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
+import { withAdminAuth } from '@/lib/admin-guard';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -12,10 +13,15 @@ function sanitize(value: string): string {
     .replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
+// Admin-only: downloads a booth photo by session ID alone, with no OTP or
+// other proof the requester is the actual customer — used exclusively by
+// the admin Submissions table's download buttons. Customer downloads go
+// through the OTP-verified /api/download/file route instead.
 export async function GET(
   req: NextRequest,
   { params }: { params: { sessionId: string; type: string } },
 ) {
+  return withAdminAuth(req, async () => {
   try {
     const { sessionId, type } = params;
 
@@ -63,4 +69,7 @@ export async function GET(
     console.error('[API] Download image error:', error.message);
     return NextResponse.json({ message: 'Internal server error' }, { status: 500 });
   }
+  // No roles restriction — the Submissions table's download buttons are
+  // visible to the read-only "client" role too, not just admin.
+  });
 }
