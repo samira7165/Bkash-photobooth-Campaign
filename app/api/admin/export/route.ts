@@ -37,12 +37,8 @@ export async function GET(req: NextRequest) {
       if (toParam) createdAtFilter.lte = new Date(`${toParam}T23:59:59.999`);
 
       const rows: string[] = [
-        toCsvRow([
-          'Source', 'Name', 'Phone', 'Gender', 'Job/Career', 'College', 'Event', 'Status', 'Downloads', 'Comic Downloads',
-          'Coupon Post Link', 'Coupon bKash Number', 'Coupon Screenshot', 'Created At',
-        ]),
+        toCsvRow(['Source', 'Name', 'Phone', 'Gender', 'Job/Career', 'College', 'Event', 'Status', 'Downloads', 'Comic Downloads', 'Created At']),
       ];
-      const screenshotUrl = (couponId: string) => `${req.nextUrl.origin}/api/admin/coupon-submissions/${couponId}/screenshot`;
 
       if (source === 'all' || source === 'booth') {
         const where: any = {};
@@ -52,17 +48,10 @@ export async function GET(req: NextRequest) {
         if (createdAtFilter.gte || createdAtFilter.lte) where.createdAt = createdAtFilter;
 
         const sessions = await prisma.session.findMany({ where, orderBy: { createdAt: 'desc' } });
-        const boothCoupons = sessions.length
-          ? await prisma.couponSubmission.findMany({ where: { source: 'booth', sourceId: { in: sessions.map((s) => s.id) } } })
-          : [];
-        const boothCouponBySessionId = new Map(boothCoupons.map((c) => [c.sourceId, c]));
         for (const s of sessions) {
-          const coupon = boothCouponBySessionId.get(s.id);
           rows.push(toCsvRow([
             'Booth', s.name, s.phone, s.gender, s.customJob || s.selectedJob || '', s.college || '',
-            '', s.status, s.downloadCount, s.comicDownloadCount,
-            coupon?.postUrl || '', coupon?.phone || '', coupon ? screenshotUrl(coupon.id) : '',
-            s.createdAt.toISOString(),
+            '', s.status, s.downloadCount, s.comicDownloadCount, s.createdAt.toISOString(),
           ]));
         }
       }
@@ -83,18 +72,11 @@ export async function GET(req: NextRequest) {
             images: { orderBy: { createdAt: 'desc' }, take: 1 },
           },
         });
-        const imageIds = participants.map((p) => p.images[0]?.id).filter((id): id is string => !!id);
-        const mobileCoupons = imageIds.length
-          ? await prisma.couponSubmission.findMany({ where: { source: 'mobile', sourceId: { in: imageIds } } })
-          : [];
-        const mobileCouponByImageId = new Map(mobileCoupons.map((c) => [c.sourceId, c]));
         for (const p of participants) {
           const image = p.images[0];
-          const coupon = image ? mobileCouponByImageId.get(image.id) : undefined;
           rows.push(toCsvRow([
             'Mobile', p.name, p.phone, p.gender, p.career, p.college || '',
             p.event.name, image?.processingStatus || 'no_image', image?.downloadCount || 0, image?.comicDownloadCount || 0,
-            coupon?.postUrl || '', coupon?.phone || '', coupon ? screenshotUrl(coupon.id) : '',
             p.createdAt.toISOString(),
           ]));
         }

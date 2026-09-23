@@ -216,7 +216,6 @@ export interface DownloadSubmission {
   name: string;
   career: string;
   id: string;
-  source: 'booth' | 'mobile';
   label: string;
   originalUrl: string | null;
   aiUrl: string | null;
@@ -227,54 +226,6 @@ export interface DownloadSubmission {
 
 export async function getDownloadGallery(): Promise<{ submissions: DownloadSubmission[] }> {
   const res = await fetch(`/api/download/gallery`, { credentials: 'include' });
-  return handle(res);
-}
-
-// ─── Coupon claim (customer-facing) ───
-
-export type CouponSubmissionStatus = 'pending' | 'approved' | 'rejected';
-
-export interface CouponSubmissionData {
-  id: string;
-  status: CouponSubmissionStatus;
-  couponCode: string | null;
-  couponValue: string | null;
-  couponExpiry: string | null;
-  rejectionReason: string | null;
-  submittedAt: string;
-}
-
-export async function getCouponSubmission(
-  source: 'booth' | 'mobile',
-  sourceId: string,
-): Promise<{ submission: CouponSubmissionData | null }> {
-  const res = await fetch(`/api/coupon-submissions?source=${source}&sourceId=${sourceId}`, {
-    credentials: 'include',
-  });
-  return handle(res);
-}
-
-export async function submitCouponClaim(data: {
-  source: 'booth' | 'mobile';
-  sourceId: string;
-  name: string;
-  phone: string;
-  postUrl?: string;
-  screenshot: File;
-}): Promise<{ submission: CouponSubmissionData }> {
-  const formData = new FormData();
-  formData.set('source', data.source);
-  formData.set('sourceId', data.sourceId);
-  formData.set('name', data.name);
-  formData.set('phone', data.phone);
-  if (data.postUrl) formData.set('postUrl', data.postUrl);
-  formData.set('screenshot', data.screenshot);
-
-  const res = await fetch('/api/coupon-submissions', {
-    method: 'POST',
-    credentials: 'include',
-    body: formData,
-  });
   return handle(res);
 }
 
@@ -331,10 +282,6 @@ export interface ParticipantRow {
   hasOriginalImage: boolean;
   hasGeneratedImage: boolean;
   createdAt: string;
-  couponPostUrl: string | null;
-  couponPhone: string | null;
-  couponScreenshotId: string | null;
-  couponStatus: string | null;
 }
 
 export interface ParticipantsResponse {
@@ -419,10 +366,6 @@ export interface Submission {
   errorMessage?: string | null;
   createdAt: string;
   updatedAt: string;
-  couponPostUrl: string | null;
-  couponPhone: string | null;
-  couponScreenshotId: string | null;
-  couponStatus: string | null;
 }
 
 export interface SubmissionsResponse {
@@ -664,70 +607,6 @@ export async function getAnalytics(from?: string, to?: string): Promise<Analytic
   if (to) qs.set('to', to);
   const res = await fetch(`/api/admin/analytics?${qs.toString()}`);
   return handle<AnalyticsData>(res);
-}
-
-// ─── Admin: Coupon submissions ───
-
-export interface AdminCouponSubmission {
-  id: string;
-  source: 'booth' | 'mobile';
-  sourceId: string;
-  name: string;
-  phone: string;
-  postUrl: string | null;
-  status: CouponSubmissionStatus;
-  couponCode: string | null;
-  couponValue: string | null;
-  couponExpiry: string | null;
-  rejectionReason: string | null;
-  submittedAt: string;
-  verifiedAt: string | null;
-}
-
-export interface CouponSubmissionsResponse {
-  data: AdminCouponSubmission[];
-  total: number;
-  page: number;
-  limit: number;
-}
-
-export async function getCouponSubmissions(params: {
-  status?: string;
-  page?: number;
-  limit?: number;
-}): Promise<CouponSubmissionsResponse> {
-  const qs = new URLSearchParams();
-  if (params.status) qs.set('status', params.status);
-  if (params.page) qs.set('page', String(params.page));
-  if (params.limit) qs.set('limit', String(params.limit));
-  const res = await fetch(`/api/admin/coupon-submissions?${qs.toString()}`);
-  return handle<CouponSubmissionsResponse>(res);
-}
-
-export async function approveCouponSubmission(
-  id: string,
-  data: { couponCode: string; couponValue: string; couponExpiry: string },
-): Promise<AdminCouponSubmission> {
-  const res = await fetch(`/api/admin/coupon-submissions/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'approve', ...data }),
-  });
-  return handle<AdminCouponSubmission>(res);
-}
-
-export async function rejectCouponSubmission(id: string, reason: string): Promise<AdminCouponSubmission> {
-  const res = await fetch(`/api/admin/coupon-submissions/${id}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'reject', rejectionReason: reason }),
-  });
-  return handle<AdminCouponSubmission>(res);
-}
-
-export async function deleteCouponSubmission(id: string): Promise<{ success: boolean }> {
-  const res = await fetch(`/api/admin/coupon-submissions/${id}`, { method: 'DELETE' });
-  return handle(res);
 }
 
 // ─── Admin: User management ───
