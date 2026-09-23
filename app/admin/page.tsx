@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
+  AdminCouponSubmission,
   AdminUser,
   AnalyticsData,
+  CouponSubmissionsResponse,
   DashboardStats,
   EventData,
   ParticipantRow,
@@ -20,11 +22,13 @@ import {
   Submission,
   SubmissionsResponse,
   adminLogout,
+  approveCouponSubmission,
   bulkDeleteSubmissions,
   createEvent,
   createPromptTemplate,
   createProvider,
   createUser,
+  deleteCouponSubmission,
   deleteParticipant,
   deletePromptTemplate,
   deleteProvider,
@@ -32,6 +36,7 @@ import {
   deleteUser,
   exportCsvUrl,
   getAnalytics,
+  getCouponSubmissions,
   getCurrentAdmin,
   getDashboardStats,
   getEvents,
@@ -45,6 +50,7 @@ import {
   previewPrompt,
   regenerateParticipantImage,
   regenerateSubmission,
+  rejectCouponSubmission,
   resetProvider,
   resetUserPassword,
   updateEvent,
@@ -64,6 +70,7 @@ type Section =
   | 'prompts'
   | 'submissions'
   | 'participants'
+  | 'coupons'
   | 'queue'
   | 'users';
 
@@ -74,12 +81,14 @@ const NAV_ITEMS: { id: Section; label: string }[] = [
   { id: 'prompts', label: 'Prompts' },
   { id: 'submissions', label: 'Submissions' },
   { id: 'participants', label: 'Mobile Experience' },
+  { id: 'coupons', label: 'Coupon Claims' },
   { id: 'queue', label: 'Queue Monitor' },
   { id: 'users', label: 'Users' },
 ];
 
 // Read-only "client" role — sections beyond these are hidden here and
-// blocked server-side (see lib/admin-guard.ts's `roles` option).
+// blocked server-side (see lib/admin-guard.ts's `roles` option). Coupon
+// Claims is admin-only — approving one issues a real discount code.
 const CLIENT_ALLOWED_SECTIONS: Section[] = ['dashboard', 'analytics', 'submissions'];
 
 const SECTION_TITLES: Record<Section, string> = {
@@ -89,6 +98,7 @@ const SECTION_TITLES: Record<Section, string> = {
   prompts: 'Prompt Templates',
   submissions: 'Submissions',
   participants: 'Mobile Experience',
+  coupons: 'Coupon Claims',
   queue: 'Queue Monitor',
   users: 'Users',
 };
@@ -250,7 +260,8 @@ type ConfirmAction =
   | { kind: 'participant'; id: string }
   | { kind: 'provider'; provider: Provider }
   | { kind: 'user'; user: AdminUser }
-  | { kind: 'prompt'; template: PromptTemplate };
+  | { kind: 'prompt'; template: PromptTemplate }
+  | { kind: 'coupon'; id: string };
 
 interface PromptFormState {
   name: string;
@@ -605,6 +616,61 @@ export default function AdminPage() {
     setParticipantPage(1);
   }, [participantEventFilter, participantGenderFilter, participantCareerFilter, participantSearch]);
 
+  // ── Coupon claims ──
+  const [couponStatusFilter, setCouponStatusFilter] = useState('all');
+  const [couponPage, setCouponPage] = useState(1);
+  const [couponSubmissions, setCouponSubmissions] = useState<CouponSubmissionsResponse | null>(null);
+  const [couponLoading, setCouponLoading] = useState(true);
+  const [couponActionTarget, setCouponActionTarget] = useState<AdminCouponSubmission | null>(null);
+  const [couponActionKind, setCouponActionKind] = useState<'approve' | 'reject' | null>(null);
+  const [couponActionSaving, setCouponActionSaving] = useState(false);
+  const [couponForm, setCouponForm] = useState({ couponCode: '', couponValue: '', couponExpiry: '', rejectionReason: '' });
+
+  const loadCouponSubmissions = useCallback(async () => {
+    setCouponLoading(true);
+    try {
+      const data = await getCouponSubmissions({ status: couponStatusFilter, page: couponPage, limit: 20 });
+      setCouponSubmissions(data);
+    } catch (e: any) {
+      showError(e.message || 'Failed to load coupon claims');
+    } finally {
+      setCouponLoading(false);
+    }
+  }, [couponStatusFilter, couponPage, showError]);
+
+  useEffect(() => {
+    setCouponPage(1);
+  }, [couponStatusFilter]);
+
+  function openCouponAction(submission: AdminCouponSubmission, kind: 'approve' | 'reject') {
+    setCouponActionTarget(submission);
+    setCouponActionKind(kind);
+    setCouponForm({ couponCode: '', couponValue: '', couponExpiry: '', rejectionReason: '' });
+  }
+
+  async function submitCouponAction() {
+    if (!couponActionTarget || !couponActionKind) return;
+    setCouponActionSaving(true);
+    try {
+      if (couponActionKind === 'approve') {
+        await approveCouponSubmission(couponActionTarget.id, {
+          couponCode: couponForm.couponCode,
+          couponValue: couponForm.couponValue,
+          couponExpiry: couponForm.couponExpiry,
+        });
+      } else {
+        await rejectCouponSubmission(couponActionTarget.id, couponForm.rejectionReason);
+      }
+      setCouponActionTarget(null);
+      setCouponActionKind(null);
+      await loadCouponSubmissions();
+    } catch (e: any) {
+      showError(e.message || 'Failed to update coupon claim');
+    } finally {
+      setCouponActionSaving(false);
+    }
+  }
+
   // ── Queue monitor ──
   const [queueStatus, setQueueStatus] = useState<QueueStatus | null>(null);
   const [queueRecent, setQueueRecent] = useState<Submission[]>([]);
@@ -900,6 +966,10 @@ export default function AdminPage() {
         await deletePromptTemplate(confirmAction.template.id);
         await loadPromptTemplates();
         showToast('Template deleted', 'success');
+      } else if (confirmAction.kind === 'coupon') {
+        await deleteCouponSubmission(confirmAction.id);
+        await loadCouponSubmissions();
+        showToast('Coupon claim deleted', 'success');
       }
     } catch (e: any) {
       showError(e.message || 'Failed to delete');
@@ -989,6 +1059,11 @@ export default function AdminPage() {
     if (!admin || section !== 'participants') return;
     loadParticipants();
   }, [admin, section, loadParticipants]);
+
+  useEffect(() => {
+    if (!admin || section !== 'coupons') return;
+    loadCouponSubmissions();
+  }, [admin, section, loadCouponSubmissions]);
 
   useEffect(() => {
     if (!admin || section !== 'queue') return;
@@ -1323,6 +1398,20 @@ export default function AdminPage() {
           />
         )}
 
+        {section === 'coupons' && (
+          <CouponsSection
+            data={couponSubmissions}
+            loading={couponLoading}
+            statusFilter={couponStatusFilter}
+            onStatusFilterChange={setCouponStatusFilter}
+            onPrevPage={() => setCouponPage((p) => Math.max(1, p - 1))}
+            onNextPage={() => setCouponPage((p) => Math.min(couponSubmissions ? Math.ceil(couponSubmissions.total / couponSubmissions.limit) : 1, p + 1))}
+            onApprove={(s) => openCouponAction(s, 'approve')}
+            onReject={(s) => openCouponAction(s, 'reject')}
+            onDelete={(id) => setConfirmAction({ kind: 'coupon', id })}
+          />
+        )}
+
         {section === 'queue' && <QueueMonitorSection status={queueStatus} recent={queueRecent} />}
 
         {section === 'users' && (
@@ -1355,6 +1444,80 @@ export default function AdminPage() {
       {lightboxSrc && (
         <div className="admin-lightbox" onClick={() => setLightboxSrc(null)}>
           <img src={lightboxSrc} alt="Full size" />
+        </div>
+      )}
+
+      {couponActionTarget && couponActionKind && (
+        <div className="admin-modal-overlay" onClick={() => { setCouponActionTarget(null); setCouponActionKind(null); }}>
+          <div className="admin-modal" onClick={(e) => e.stopPropagation()}>
+            <h2 className="card-title">
+              {couponActionKind === 'approve' ? 'Approve Coupon Claim' : 'Reject Coupon Claim'}
+            </h2>
+            <p style={{ marginBottom: '1rem', color: '#666' }}>
+              {couponActionTarget.name} — {couponActionTarget.phone}
+            </p>
+            {couponActionKind === 'approve' ? (
+              <>
+                <div className="field">
+                  <label>Coupon Code <span className="req">*</span></label>
+                  <input
+                    type="text"
+                    value={couponForm.couponCode}
+                    onChange={(e) => setCouponForm((f) => ({ ...f, couponCode: e.target.value }))}
+                    placeholder="e.g. BKASH100X"
+                  />
+                </div>
+                <div className="field">
+                  <label>Coupon Value <span className="req">*</span></label>
+                  <input
+                    type="text"
+                    value={couponForm.couponValue}
+                    onChange={(e) => setCouponForm((f) => ({ ...f, couponValue: e.target.value }))}
+                    placeholder="e.g. ৳100 OFF"
+                  />
+                </div>
+                <div className="field">
+                  <label>Valid Until <span className="req">*</span></label>
+                  <input
+                    type="date"
+                    value={couponForm.couponExpiry}
+                    onChange={(e) => setCouponForm((f) => ({ ...f, couponExpiry: e.target.value }))}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="field">
+                <label>Rejection Reason</label>
+                <textarea
+                  className="admin-textarea"
+                  rows={3}
+                  value={couponForm.rejectionReason}
+                  onChange={(e) => setCouponForm((f) => ({ ...f, rejectionReason: e.target.value }))}
+                  placeholder="Why is this submission being rejected? (shown to the customer)"
+                />
+              </div>
+            )}
+            <div className="admin-row-actions" style={{ marginTop: '1rem', justifyContent: 'flex-end' }}>
+              <button
+                className="btn-secondary admin-btn-sm"
+                onClick={() => { setCouponActionTarget(null); setCouponActionKind(null); }}
+                disabled={couponActionSaving}
+              >
+                Cancel
+              </button>
+              <button
+                className={couponActionKind === 'approve' ? 'btn-primary admin-btn-sm' : 'admin-btn-solid-danger admin-btn-sm'}
+                onClick={submitCouponAction}
+                disabled={
+                  couponActionSaving ||
+                  (couponActionKind === 'approve' &&
+                    (!couponForm.couponCode.trim() || !couponForm.couponValue.trim() || !couponForm.couponExpiry))
+                }
+              >
+                {couponActionSaving ? 'Saving…' : couponActionKind === 'approve' ? 'Approve' : 'Reject'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1902,6 +2065,9 @@ export default function AdminPage() {
     if (action.kind === 'prompt') {
       return `Delete template "${action.template.name}"?`;
     }
+    if (action.kind === 'coupon') {
+      return 'Delete this coupon claim? The submitted screenshot will be permanently removed.';
+    }
     return `Delete user "${action.user.displayName}"? This cannot be undone.`;
   }
 }
@@ -2409,6 +2575,8 @@ function SubmissionsSection({
               <th>Generated</th>
               <th>Downloads</th>
               <th>Comic DL</th>
+              <th>Coupon Link</th>
+              <th>Coupon SS</th>
               <th>Date</th>
               <th>Actions</th>
             </tr>
@@ -2488,6 +2656,22 @@ function SubmissionsSection({
                   </td>
                   <td>{s.downloadCount}</td>
                   <td>{s.comicDownloadCount}</td>
+                  <td>
+                    {s.couponPostUrl ? (
+                      <a href={s.couponPostUrl} target="_blank" rel="noopener noreferrer">View</a>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    {s.couponScreenshotId ? (
+                      <a href={`/api/admin/coupon-submissions/${s.couponScreenshotId}/screenshot`} target="_blank" rel="noopener noreferrer">
+                        <img
+                          className="admin-thumb"
+                          src={`/api/admin/coupon-submissions/${s.couponScreenshotId}/screenshot`}
+                          alt="Coupon proof screenshot"
+                        />
+                      </a>
+                    ) : '—'}
+                  </td>
                   <td>{timeAgo(s.createdAt)}</td>
                   <td>
                     <div className="admin-row-actions">
@@ -2524,7 +2708,7 @@ function SubmissionsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={readOnly ? 13 : 14} className="admin-empty-cell">
+                <td colSpan={readOnly ? 15 : 16} className="admin-empty-cell">
                   {loading ? 'Loading…' : 'No submissions yet'}
                 </td>
               </tr>
@@ -2784,6 +2968,8 @@ function ParticipantsSection({
               <th>Generated</th>
               <th>Downloads</th>
               <th>Comic DL</th>
+              <th>Coupon Link</th>
+              <th>Coupon SS</th>
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -2853,6 +3039,22 @@ function ParticipantsSection({
                   </td>
                   <td>{p.downloadCount}</td>
                   <td>{p.comicDownloadCount}</td>
+                  <td>
+                    {p.couponPostUrl ? (
+                      <a href={p.couponPostUrl} target="_blank" rel="noopener noreferrer">View</a>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    {p.couponScreenshotId ? (
+                      <a href={`/api/admin/coupon-submissions/${p.couponScreenshotId}/screenshot`} target="_blank" rel="noopener noreferrer">
+                        <img
+                          className="admin-thumb"
+                          src={`/api/admin/coupon-submissions/${p.couponScreenshotId}/screenshot`}
+                          alt="Coupon proof screenshot"
+                        />
+                      </a>
+                    ) : '—'}
+                  </td>
                   <td>{timeAgo(p.createdAt)}</td>
                   <td>
                     <div className="admin-row-actions">
@@ -2875,7 +3077,7 @@ function ParticipantsSection({
               ))
             ) : (
               <tr>
-                <td colSpan={13} className="admin-empty-cell">
+                <td colSpan={15} className="admin-empty-cell">
                   {participantsLoading ? 'Loading…' : 'No participants yet'}
                 </td>
               </tr>
@@ -2896,6 +3098,129 @@ function ParticipantsSection({
             Page {participantPage} of {participantTotalPages}
           </span>
           <button className="btn-secondary admin-btn-sm" disabled={participantPage >= participantTotalPages} onClick={onNextPage}>
+            Next
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+const COUPON_STATUS_BADGE: Record<string, string> = {
+  pending: 'admin-badge-queued',
+  approved: 'admin-badge-generated',
+  rejected: 'admin-badge-failed',
+};
+
+function CouponsSection({
+  data,
+  loading,
+  statusFilter,
+  onStatusFilterChange,
+  onPrevPage,
+  onNextPage,
+  onApprove,
+  onReject,
+  onDelete,
+}: {
+  data: CouponSubmissionsResponse | null;
+  loading: boolean;
+  statusFilter: string;
+  onStatusFilterChange: (v: string) => void;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  onApprove: (s: AdminCouponSubmission) => void;
+  onReject: (s: AdminCouponSubmission) => void;
+  onDelete: (id: string) => void;
+}) {
+  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
+
+  return (
+    <>
+      <div className="admin-toolbar">
+        <select className="admin-select" value={statusFilter} onChange={(e) => onStatusFilterChange(e.target.value)}>
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
+
+      <div className="admin-table-wrap">
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>bKash Number</th>
+              <th>Post Link</th>
+              <th>Screenshot</th>
+              <th>Status</th>
+              <th>Coupon</th>
+              <th>Submitted</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data && data.data.length > 0 ? (
+              data.data.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name}</td>
+                  <td style={{ fontFamily: 'monospace' }}>{s.phone}</td>
+                  <td>
+                    {s.postUrl ? (
+                      <a href={s.postUrl} target="_blank" rel="noopener noreferrer">View Post</a>
+                    ) : '—'}
+                  </td>
+                  <td>
+                    <a href={`/api/admin/coupon-submissions/${s.id}/screenshot`} target="_blank" rel="noopener noreferrer">
+                      <img
+                        className="admin-thumb"
+                        src={`/api/admin/coupon-submissions/${s.id}/screenshot`}
+                        alt="Submission screenshot"
+                      />
+                    </a>
+                  </td>
+                  <td>
+                    <span className={`admin-badge ${COUPON_STATUS_BADGE[s.status] || ''}`}>
+                      {s.status.charAt(0).toUpperCase() + s.status.slice(1)}
+                    </span>
+                  </td>
+                  <td>{s.status === 'approved' ? `${s.couponValue} (${s.couponCode})` : '—'}</td>
+                  <td>{timeAgo(s.submittedAt)}</td>
+                  <td>
+                    <div className="admin-row-actions">
+                      {s.status === 'pending' && (
+                        <>
+                          <button className="btn-secondary admin-btn-sm" onClick={() => onApprove(s)}>Approve</button>
+                          <button className="admin-delete-btn" onClick={() => onReject(s)}>Reject</button>
+                        </>
+                      )}
+                      {s.status === 'rejected' && (
+                        <button className="btn-secondary admin-btn-sm" onClick={() => onApprove(s)}>Approve</button>
+                      )}
+                      <button className="admin-delete-btn" onClick={() => onDelete(s.id)}>Delete</button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={8} className="admin-empty-cell">
+                  {loading ? 'Loading…' : 'No coupon claims yet'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {data && data.total > 0 && (
+        <div className="admin-pagination">
+          <button className="btn-secondary admin-btn-sm" onClick={onPrevPage} disabled={data.page <= 1}>
+            Previous
+          </button>
+          <span>Page {data.page} of {totalPages}</span>
+          <button className="btn-secondary admin-btn-sm" onClick={onNextPage} disabled={data.page >= totalPages}>
             Next
           </button>
         </div>

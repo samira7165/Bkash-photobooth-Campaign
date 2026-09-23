@@ -36,25 +36,43 @@ export async function GET(req: NextRequest) {
         prisma.session.count({ where }),
       ]);
 
-      const data = sessions.map((s) => ({
-        id: s.id,
-        name: s.name,
-        phone: s.phone,
-        email: s.email,
-        college: s.college,
-        gender: s.gender,
-        selectedJob: s.selectedJob,
-        customJob: s.customJob,
-        status: s.status,
-        hasOriginalImage: !!s.originalImagePath,
-        hasGeneratedImage: !!s.generatedImagePath,
-        downloadCount: s.downloadCount,
-        comicDownloadCount: s.comicDownloadCount,
-        smsSent: s.smsSent,
-        errorMessage: s.errorMessage,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      }));
+      // CouponSubmission has no Prisma relation to Session/Image (it's
+      // addressed generically by source+sourceId, the same pairing
+      // lib/download-file.ts already uses) — look these up in one extra
+      // query rather than N+1 per row.
+      const couponSubmissions = sessions.length
+        ? await prisma.couponSubmission.findMany({
+            where: { source: 'booth', sourceId: { in: sessions.map((s) => s.id) } },
+          })
+        : [];
+      const couponBySessionId = new Map(couponSubmissions.map((c) => [c.sourceId, c]));
+
+      const data = sessions.map((s) => {
+        const coupon = couponBySessionId.get(s.id);
+        return {
+          id: s.id,
+          name: s.name,
+          phone: s.phone,
+          email: s.email,
+          college: s.college,
+          gender: s.gender,
+          selectedJob: s.selectedJob,
+          customJob: s.customJob,
+          status: s.status,
+          hasOriginalImage: !!s.originalImagePath,
+          hasGeneratedImage: !!s.generatedImagePath,
+          downloadCount: s.downloadCount,
+          comicDownloadCount: s.comicDownloadCount,
+          smsSent: s.smsSent,
+          errorMessage: s.errorMessage,
+          createdAt: s.createdAt,
+          updatedAt: s.updatedAt,
+          couponPostUrl: coupon?.postUrl || null,
+          couponPhone: coupon?.phone || null,
+          couponScreenshotId: coupon?.id || null,
+          couponStatus: coupon?.status || null,
+        };
+      });
 
       return NextResponse.json({ data, total, page, limit });
     } catch (error: any) {

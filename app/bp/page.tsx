@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { adminLogin, adminLogout, DownloadSubmission } from '@/services/api';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
+import CouponClaimModal from '@/components/download/CouponClaimModal';
+import TermsAndConditions from '@/components/TermsAndConditions';
+import CouponRules from '@/components/download/CouponRules';
 
 export default function BpPortal() {
   const [staff, setStaff] = useState<string | null>(null);
@@ -14,6 +17,9 @@ export default function BpPortal() {
   const [results, setResults] = useState<DownloadSubmission[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [couponFor, setCouponFor] = useState<DownloadSubmission | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [termsError, setTermsError] = useState('');
 
   useEffect(() => {
     fetch('/api/admin/auth/me', { cache: 'no-store' })
@@ -42,6 +48,8 @@ export default function BpPortal() {
     setError('');
     setResults(null);
     if (!isValidPhone(phone)) { setError(PHONE_VALIDATION_MESSAGE); return; }
+    if (!acceptedTerms) { setTermsError('Please agree to the Disclaimer to continue'); return; }
+    setTermsError('');
     setBusy(true);
     try {
       const response = await fetch(`/api/bp/gallery?phone=${encodeURIComponent(phone)}`, { cache: 'no-store' });
@@ -100,10 +108,12 @@ export default function BpPortal() {
               <button className="download-item-btn" onClick={signOut} disabled={busy}>Sign Out</button>
             </div>
             <form className="download-card download-search" onSubmit={search}>
+              <CouponRules />
               <div className="download-field">
                 <label htmlFor="bp-phone">Customer phone number</label>
                 <input id="bp-phone" type="tel" autoComplete="off" placeholder="01XXXXXXXXX" required value={phone} onChange={(event) => { setPhone(event.target.value); setResults(null); }} disabled={busy} />
               </div>
+              <TermsAndConditions accepted={acceptedTerms} onChange={(accepted) => { setAcceptedTerms(accepted); setTermsError(''); }} error={termsError} />
               <button className="download-btn-primary" disabled={busy}>{busy ? 'Please wait…' : 'Find Photos'}</button>
             </form>
             {results && <section className="download-results" aria-label="Customer photos" aria-live="polite">
@@ -118,6 +128,17 @@ export default function BpPortal() {
                   </dl>
                 </div>
                 {!submission.aiUrl && <p className="download-card">{submission.processingStatus === 'failed' ? 'AI generation failed. Available files can still be downloaded.' : 'The generated image is not ready yet. Search again to refresh.'}</p>}
+                {submission.aiUrl && (
+                  <div className="coupon-cta">
+                    <p className="coupon-cta-title">🎁 Get Your Coupon</p>
+                    <p className="coupon-cta-sub">
+                      Share your photo on social media and submit your proof to claim your exclusive bKash coupon.
+                    </p>
+                    <button type="button" className="coupon-cta-btn" onClick={() => setCouponFor(submission)}>
+                      Get My Coupon
+                    </button>
+                  </div>
+                )}
                 <div className="download-item-group"><div className="download-gallery-grid">
                   {[
                     { key: 'original', label: 'Original Photo', url: submission.originalUrl },
@@ -128,12 +149,21 @@ export default function BpPortal() {
                     {item.key !== 'comic-book' && <span className="download-item-label">{item.label}</span>}
                     <a className="download-item-btn" href={`${item.url}?download=1`} download>{item.key === 'comic-book' ? 'Click Here To Download Comic Book' : 'Download'} <span aria-hidden="true">↓</span></a>
                   </div>)}
-                </div></div>
+                </div>
+                </div>
               </article>)}
             </section>}
           </>
         )}
       </main>
+      {couponFor && (
+        <CouponClaimModal
+          source={couponFor.source}
+          sourceId={couponFor.id}
+          defaultName={couponFor.name}
+          onClose={() => setCouponFor(null)}
+        />
+      )}
     </div>
   );
 }

@@ -8,11 +8,14 @@ uploads/participant-original/*
 uploads/event-pdfs/*
 uploads/comic/*
 uploads/rendered/*
+uploads/coupon-screenshots/*
 !uploads/original/.gitkeep
 !uploads/generated/.gitkeep
 !uploads/participant-original/.gitkeep
 !uploads/event-pdfs/.gitkeep
 !uploads/comic/.gitkeep
 !uploads/rendered/.gitkeep
+!uploads/coupon-screenshots/.gitkeep
 .DS_Store
 tsconfig.tsbuildinfo
+access.log

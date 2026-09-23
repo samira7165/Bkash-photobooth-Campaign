@@ -26,6 +26,7 @@ export async function getDownloadSubmissions(phone: string, fileBase = '/api/dow
     const mobileSubmissions = participants.flatMap((participant) =>
       participant.images.map((image) => ({
         id: image.id,
+        source: 'mobile' as const,
         name: participant.name,
         career: participant.career,
         label: `${participant.career} — ${participant.event.name}`,
@@ -43,6 +44,7 @@ export async function getDownloadSubmissions(phone: string, fileBase = '/api/dow
       .filter((s) => s.originalImagePath || s.generatedImagePath)
       .map((s) => ({
         id: s.id,
+        source: 'booth' as const,
         name: s.name,
         career: s.customJob || s.selectedJob || 'Dream Job',
         label: `${s.customJob || s.selectedJob || 'Dream Job'} — Event Booth`,

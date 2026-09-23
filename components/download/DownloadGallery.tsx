@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getDownloadGallery, DownloadSubmission } from '@/services/api';
+import CouponClaimModal from './CouponClaimModal';
 
 function triggerDownload(url: string) {
   const a = document.createElement('a');
@@ -12,10 +13,17 @@ function triggerDownload(url: string) {
   document.body.removeChild(a);
 }
 
-function SubmissionCard({ submission, onComicDownload }: { submission: DownloadSubmission; onComicDownload: () => void }) {
+function SubmissionCard({
+  submission,
+  onComicDownload,
+}: {
+  submission: DownloadSubmission;
+  onComicDownload: () => void;
+}) {
   const [downloadingAll, setDownloadingAll] = useState(false);
   const previewRef = useRef<HTMLDialogElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [showCoupon, setShowCoupon] = useState(false);
 
   useEffect(() => {
     const dialog = previewRef.current;
@@ -63,6 +71,16 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
 
   return (
     <div className="download-item-group">
+      <div className="coupon-cta">
+        <p className="coupon-cta-title">🎁 Get Your Coupon</p>
+        <p className="coupon-cta-sub">
+          Share your photo on social media and submit your post proof to claim your exclusive coupon.
+        </p>
+        <button type="button" className="coupon-cta-btn" onClick={() => setShowCoupon(true)}>
+          Get My Coupon
+        </button>
+      </div>
+
       <div className="download-gallery-grid">
         {items.map((item) => (
           <div className="download-item" key={item.key}>
@@ -129,6 +147,15 @@ function SubmissionCard({ submission, onComicDownload }: { submission: DownloadS
       <button className="download-btn-primary download-all-btn" onClick={downloadAll} disabled={downloadingAll}>
         {downloadingAll ? 'Downloading…' : 'Download All'}
       </button>
+
+      {showCoupon && (
+        <CouponClaimModal
+          source={submission.source}
+          sourceId={submission.id}
+          defaultName={submission.name}
+          onClose={() => setShowCoupon(false)}
+        />
+      )}
 
       {submission.comicBookUrl && (
         <dialog
@@ -225,7 +252,10 @@ export default function DownloadGallery() {
           {submissions.length > 1 && (
             <p className="download-submission-heading">{submission.label}</p>
           )}
-          <SubmissionCard submission={submission} onComicDownload={() => popupRef.current?.showModal()} />
+          <SubmissionCard
+            submission={submission}
+            onComicDownload={() => popupRef.current?.showModal()}
+          />
         </div>
       ))}
       <dialog

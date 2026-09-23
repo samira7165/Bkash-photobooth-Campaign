@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import TermsAndConditions from '@/components/TermsAndConditions';
+import CouponRules from './CouponRules';
 import { isValidPhone, PHONE_VALIDATION_MESSAGE } from '@/lib/utils';
 import { requestDownloadOtp, resumeDownloadSession } from '@/services/api';
 import { getRememberedPhone, rememberPhone } from '@/lib/remembered-phone';
@@ -65,6 +66,8 @@ export default function DownloadPhoneEntry({ onComplete, initialPhone = '' }: Pr
 
   return (
     <form className="download-card download-search" onSubmit={(event) => { event.preventDefault(); submit(); }}>
+
+      <CouponRules />
 
       <div className="download-field">
         <label htmlFor="download-phone">Phone Number</label>

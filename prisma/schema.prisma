@@ -267,3 +267,44 @@ model QrScan {
   @@index([createdAt])
   @@map("qr_scans")
 }
+
+enum CouponSubmissionStatus {
+  pending
+  approved
+  rejected
+}
+
+/// A customer's "share on social + submit proof" claim for a campaign
+/// coupon, tied to one specific generated photo — `source`/`sourceId` point
+/// at either a Session (booth) or Image (mobile) row, the same pairing
+/// lib/download-file.ts already uses to address a photo across both flows.
+/// One row per photo (see @@unique below): rejecting and resubmitting
+/// reuses the same row rather than piling up history, since only the
+/// latest attempt is ever actionable.
+///
+/// `phone` here is the bKash account number the coupon should be issued
+/// against — shown to the user as "bKash Account Number" — which is
+/// intentionally NOT required to match the phone number verified earlier
+/// in the download portal (a bKash wallet may be registered to a different
+/// number than the one used to claim the photo).
+model CouponSubmission {
+  id               String                  @id @default(uuid())
+  source           String                  @db.VarChar(10)
+  sourceId         String
+  name             String                  @db.VarChar(100)
+  phone            String                  @db.VarChar(20)
+  postUrl          String?                 @db.VarChar(500)
+  screenshotPath   String                  @db.VarChar(500)
+  status           CouponSubmissionStatus  @default(pending)
+  couponCode       String?                 @db.VarChar(50)
+  couponValue      String?                 @db.VarChar(50)
+  couponExpiry     DateTime?
+  rejectionReason  String?                 @db.Text
+  submittedAt      DateTime                @default(now())
+  verifiedAt       DateTime?
+
+  @@unique([source, sourceId])
+  @@index([phone])
+  @@index([status])
+  @@map("coupon_submissions")
+}
